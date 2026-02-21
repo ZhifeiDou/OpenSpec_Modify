@@ -1,0 +1,1545 @@
+
+╭─── Claude Code v2.1.49 ──────────────────────────────────────────────────────╮
+│                                 │ Tips for getting started                   │
+│       Welcome back Zhifei!      │ Run /init to create a CLAUDE.md file with… │
+│                                 │ ────────────────────────────────────────── │
+│                                 │ Recent activity                            │
+│                ✻                │ No recent activity                         │
+│                |                │                                            │
+│               ▟█▙               │                                            │
+│             ▐▛███▜▌             │                                            │
+│            ▝▜█████▛▘            │                                            │
+│              ▘▘ ▝▝              │                                            │
+│                                 │                                            │
+│      Opus 4.6 · Claude Pro      │                                            │
+│   ~\Desktop\Openspec_modified   │                                            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ Plan to implement                                                            │
+│                                                                              │
+│ OpenSpec 改进：增加 Use Case（用例）作为新 Artifact                          │
+│                                                                              │
+│ Context                                                                      │
+│                                                                              │
+│ 基于《Writing Effective Use Cases》的核心理念，在 OpenSpec 的 artifact       │
+│ 工作流中增加 use-cases 作为 proposal 和 specs 之间的新阶段。                 │
+│                                                                              │
+│ 当前工作流: proposal → specs → design → tasks → implement                    │
+│ 改进后: proposal → use-cases → specs → design → tasks → implement            │
+│                                                                              │
+│ Use Case 通过 AI 引导对话渐进式生成，遵循 Cockburn 的思路：                  │
+│ 1. 从 proposal 自动提取 Actor-Goal 列表                                      │
+│ 2. 引导用户逐步完善主成功场景                                                │
+│ 3. 引导用户补充失败/异常流                                                   │
+│ 4. 确认后自动转化为 specs 格式                                               │
+│                                                                              │
+│ ---                                                                          │
+│ 改动清单（5 个文件）                                                         │
+│                                                                              │
+│ 1. 新建: schemas/spec-driven/templates/use-cases.md                          │
+│                                                                              │
+│ Use Case 模板文件：                                                          │
+│                                                                              │
+│ ## Use Cases                                                                 │
+│                                                                              │
+│ ### Use Case: <!-- use case name (verb phrase, e.g., "Buy stocks over the    │
+│ web") -->                                                                    │
+│                                                                              │
+│ **Primary Actor:** <!-- who initiates this interaction? -->                  │
+│ **Goal:** <!-- what does the actor want to achieve? -->                      │
+│ **Scope:** <!-- what system boundary is this describing? -->                 │
+│ **Level:** <!-- Summary / User Goal / Subfunction -->                        │
+│                                                                              │
+│ **Precondition:** <!-- what must be true before this starts? -->             │
+│ **Success Guarantee:** <!-- what is true when this succeeds? -->             │
+│ **Minimal Guarantee:** <!-- what is true even when this fails? -->           │
+│                                                                              │
+│ **Main Success Scenario:**                                                   │
+│ 1. <!-- Actor does something -->                                             │
+│ 2. <!-- System responds -->                                                  │
+│ 3. <!-- Actor does something -->                                             │
+│ 4. <!-- ... 3-9 steps ... -->                                                │
+│                                                                              │
+│ **Extensions:**                                                              │
+│ <!-- 2a. condition: handling -->                                             │
+│ <!-- 3a. condition: handling -->                                             │
+│                                                                              │
+│ 2. 修改: schemas/spec-driven/schema.yaml                                     │
+│                                                                              │
+│ 在 proposal 和 specs 之间插入 use-cases artifact：                           │
+│                                                                              │
+│   - id: use-cases                                                            │
+│     generates: use-cases.md                                                  │
+│     description: Use cases capturing actor-goal interactions and scenarios   │
+│     template: use-cases.md                                                   │
+│     instruction: |                                                           │
+│       Create use cases by guiding the user through a structured              │
+│ conversation.                                                                │
+│                                                                              │
+│       Follow Cockburn's progressive disclosure process:                      │
+│                                                                              │
+│       **Step 1: Identify Actors and Goals**                                  │
+│       Read the proposal to identify potential actors (who uses the system?)  │
+│       and their goals (what do they want to accomplish?).                    │
+│       Present the Actor-Goal list to the user for confirmation:              │
+│                                                                              │
+│       > Based on your proposal, I identified these actors and goals:         │
+│       > - [Actor]: [Goal]                                                    │
+│       > - [Actor]: [Goal]                                                    │
+│       > Are these correct? Any missing?                                      │
+│                                                                              │
+│       **Step 2: Write Main Success Scenarios**                               │
+│       For each user-goal level use case, draft 3-9 numbered steps            │
+│       showing the "happy path" interaction between actor and system.         │
+│       Guidelines (from Cockburn Ch.7):                                       │
+│       - Use simple grammar: "Actor does X. System responds with Y."          │
+│       - Show actor's intent, not UI details (not "clicks button", but        │
+│ "requests export")                                                           │
+│       - Show the process moving forward, each step achieving a subgoal       │
+│       - Show clearly "who has the ball" at each step                         │
+│                                                                              │
+│       Present draft to user for review.                                      │
+│                                                                              │
+│       **Step 3: Brainstorm Extensions**                                      │
+│       For each step in the main scenario, ask:                               │
+│       > "What could go wrong at step N? What alternatives exist?"            │
+│                                                                              │
+│       Document extensions using the numbering convention:                    │
+│       - 2a. [condition]: [handling]                                          │
+│       - 3a. [condition]: [handling]                                          │
+│       - 3b. [another condition]: [handling]                                  │
+│                                                                              │
+│       **Step 4: Add Contract Elements**                                      │
+│       For each use case, confirm:                                            │
+│       - Precondition: what must be true before starting?                     │
+│       - Success Guarantee: what's true after successful completion?          │
+│       - Minimal Guarantee: what's guaranteed even on failure?                │
+│                                                                              │
+│       **Output Format**                                                      │
+│       Write use-cases.md following the template. Each use case should have:  │
+│       - Actor, Goal, Scope, Level                                            │
+│       - Precondition, Guarantees                                             │
+│       - Main Success Scenario (numbered steps)                               │
+│       - Extensions (step-number + letter convention)                         │
+│     requires:                                                                │
+│       - proposal                                                             │
+│                                                                              │
+│ 同时修改 specs artifact 的 requires：                                        │
+│   - id: specs                                                                │
+│     requires:                                                                │
+│       - use-cases    # 改为依赖 use-cases 而不是 proposal                    │
+│                                                                              │
+│ 3. 新建: src/core/templates/workflows/use-cases.ts                           │
+│                                                                              │
+│ 新建工作流模板文件，导出 getUseCasesSkillTemplate() 和                       │
+│ getOpsxUseCasesCommandTemplate()。                                           │
+│                                                                              │
+│ AI 引导对话的核心 instructions：                                             │
+│                                                                              │
+│ export function getUseCasesSkillTemplate(): SkillTemplate {                  │
+│   return {                                                                   │
+│     name: 'openspec-use-cases',                                              │
+│     description: 'Generate use cases through guided conversation...',        │
+│     instructions: `Guide the user through creating use cases for their       │
+│ change.                                                                      │
+│                                                                              │
+│ **This is a CONVERSATIONAL workflow.** Unlike other artifacts that are       │
+│ written                                                                      │
+│ in one shot, use cases are built through dialogue with the user.             │
+│                                                                              │
+│ **Steps**                                                                    │
+│                                                                              │
+│ 1. **Read the proposal for context**                                         │
+│    Read the proposal.md to understand what's being built and why.            │
+│                                                                              │
+│ 2. **Present Actor-Goal List**                                               │
+│    From the proposal, identify actors and their goals. Present to user:      │
+│                                                                              │
+│    > I've identified these actors and goals from your proposal:              │
+│    >                                                                         │
+│    > | Actor | Goal |                                                        │
+│    > |-------|------|                                                        │
+│    > | Developer | Initialize project with AI tools |                        │
+│    > | AI Agent | Get workflow instructions |                                │
+│    >                                                                         │
+│    > Does this look right? Any actors or goals missing?                      │
+│                                                                              │
+│    Wait for user confirmation. Use AskUserQuestion if needed.                │
+│                                                                              │
+│ 3. **Draft Main Success Scenarios**                                          │
+│    For each use case, draft the main success scenario:                       │
+│                                                                              │
+│    > **Use Case: Initialize Project**                                        │
+│    > Actor: Developer                                                        │
+│    >                                                                         │
+│    > Main Success:                                                           │
+│    > 1. Developer runs init command                                          │
+│    > 2. System creates directory structure                                   │
+│    > 3. System presents available AI tools                                   │
+│    > 4. Developer selects tools to configure                                 │
+│    > 5. System generates tool configurations                                 │
+│    > 6. System displays next steps                                           │
+│    >                                                                         │
+│    > Does this capture the right flow? Any steps to add or change?           │
+│                                                                              │
+│ 4. **Brainstorm Extensions**                                                 │
+│    For each step, ask about failures:                                        │
+│                                                                              │
+│    > Looking at step 3 - what if the project is already initialized?         │
+│    > And step 4 - what if the user selects no tools?                         │
+│    >                                                                         │
+│    > Let me draft the extensions:                                            │
+│    > 3a. Project already initialized → enter extend mode                     │
+│    > 4a. No tools selected → create structure only                           │
+│                                                                              │
+│ 5. **Add Contract Elements**                                                 │
+│    > For "Initialize Project", what must be true before starting?            │
+│    > (e.g., "user is in a project directory")                                │
+│    > And what does the system guarantee even if something fails?             │
+│                                                                              │
+│ 6. **Write the use-cases.md file**                                           │
+│    Once confirmed, write the complete use-cases.md                           │
+│                                                                              │
+│ 7. **Show progress and suggest next step**                                   │
+│                                                                              │
+│ **Guardrails**                                                               │
+│ - ALWAYS wait for user confirmation between steps                            │
+│ - Do NOT skip the conversation - the dialogue IS the value                   │
+│ - Each use case should have 3-9 main success steps                           │
+│ - Use Cockburn's conventions: verb phrases for names, numbered steps,        │
+│   step+letter for extensions (2a, 3b, etc.)                                  │
+│ - Focus on actor intent, not UI details                                      │
+│ - If user is unsure about extensions, suggest common failure patterns:       │
+│   invalid input, timeout, permission denied, duplicate action,               │
+│   external system failure`                                                   │
+│   };                                                                         │
+│ }                                                                            │
+│                                                                              │
+│ 4. 修改: src/core/templates/skill-templates.ts                               │
+│                                                                              │
+│ 添加新的 export：                                                            │
+│ export { getUseCasesSkillTemplate, getOpsxUseCasesCommandTemplate } from     │
+│ './workflows/use-cases.js';                                                  │
+│                                                                              │
+│ 5. 修改: src/core/templates/workflows/continue-change.ts                     │
+│                                                                              │
+│ 在 "Artifact Creation Guidelines" 的 spec-driven schema 部分，更新 artifact  │
+│ 序列描述：                                                                   │
+│ **spec-driven schema** (proposal → use-cases → specs → design → tasks):      │
+│ - **proposal.md**: ...                                                       │
+│ - **use-cases.md**: CONVERSATIONAL - guide user through actor-goal           │
+│ identification,                                                              │
+│   main success scenarios, and extensions. Do NOT write in one shot.          │
+│ - **specs/<capability>/spec.md**: ...                                        │
+│                                                                              │
+│ 同样需要更新 ff-change.ts 中对应的描述。                                     │
+│                                                                              │
+│ ---                                                                          │
+│ 不需要修改的文件                                                             │
+│                                                                              │
+│ - base.schema.ts / spec.schema.ts / change.schema.ts — schema 层不变，use    │
+│ case 是 Markdown artifact                                                    │
+│ - markdown-parser.ts — use-cases.md 不需要被解析为结构化数据（不参与 delta   │
+│ merge）                                                                      │
+│ - validator.ts — use-cases.md 作为自由格式文档，不做 Zod 验证                │
+│ - artifact-graph/ — 图结构代码不变，只是 schema.yaml 中多了一个 artifact     │
+│ 节点                                                                         │
+│                                                                              │
+│ ---                                                                          │
+│ 验证方式                                                                     │
+│                                                                              │
+│ 1. npm test 确保现有测试通过（use-cases 是新增的可选                         │
+│ artifact，不影响现有逻辑）                                                   │
+│ 2. npm run build 确保 TypeScript 编译通过                                    │
+│ 3. 手动测试：运行 openspec new change test-uc，然后 openspec status --change │
+│  test-uc，确认 use-cases 出现在 artifact 列表中                              │
+│ 4. 手动测试：运行 openspec instructions use-cases --change                   │
+│ test-uc，确认输出包含对话式引导指令                                          │
+│ 5. 确认 specs artifact 现在依赖 use-cases（而非直接依赖 proposal）           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+● I'll start by exploring the codebase to understand the existing structure
+  before making changes.
+
+● Explore(Explore codebase structure)
+  ⎿  Done (15 tool uses · 39.2k tokens · 41s)
+  (ctrl+o to expand)
+
+● Now let me read the specific files I need to modify.
+
+● Read 5 files (ctrl+o to expand)
+
+● Now I have full context. Let me implement all 5 changes.
+
+● Now let me implement all the changes. Starting with the first 4 independent
+  tasks in parallel.
+
+● Write(OpenSpec-main\schemas\spec-driven\templates\use-cases.md)
+  ⎿  Wrote 22 lines to
+     OpenSpec-main\schemas\spec-driven\templates\use-cases.md
+       1 ## Use Cases
+       2 
+       3 ### Use Case: <!-- use case name (verb phrase, e.g., "Buy stocks
+          over the web") -->
+       4 
+       5 **Primary Actor:** <!-- who initiates this interaction? -->
+       6 **Goal:** <!-- what does the actor want to achieve? -->
+       7 **Scope:** <!-- what system boundary is this describing? -->
+       8 **Level:** <!-- Summary / User Goal / Subfunction -->
+       9 
+      10 **Precondition:** <!-- what must be true before this starts? -->
+     … +12 lines (ctrl+o to expand)
+
+● Now modify schema.yaml - insert use-cases between proposal and specs, and
+  update specs' requires:
+
+● Update(OpenSpec-main\schemas\spec-driven\schema.yaml)
+  ⎿  Added 1 line, removed 1 line
+      1  name: spec-driven
+      2  version: 1
+      3 -description: Default OpenSpec workflow - proposal → specs → desi
+        -gn → tasks                                                      
+      3 +description: Default OpenSpec workflow - proposal → use-cases → 
+        +specs → design → tasks                                          
+      4  artifacts:
+      5    - id: proposal
+      6      generates: proposal.md
+
+● Now insert the use-cases artifact between proposal and specs:
+
+● Update(OpenSpec-main\schemas\spec-driven\schema.yaml)
+  ⎿  Added 54 lines
+      27        This is the foundation - specs, design, and tasks all bui
+          ld on this.
+      28      requires: []
+      29  
+      30 +  - id: use-cases                                              
+      31 +    generates: use-cases.md                                    
+      32 +    description: Use cases capturing actor-goal interactions an
+         +d scenarios                                                    
+      33 +    template: use-cases.md                                     
+      34 +    instruction: |                                             
+      35 +      Create use cases by guiding the user through a structured
+         + conversation.                                                 
+      36 +                                                               
+      37 +      Follow Cockburn's progressive disclosure process:        
+      38 +                                                               
+      39 +      **Step 1: Identify Actors and Goals**                    
+      40 +      Read the proposal to identify potential actors (who uses 
+         +the system?)                                                   
+      41 +      and their goals (what do they want to accomplish?).      
+      42 +      Present the Actor-Goal list to the user for confirmation:
+      43 +                                                               
+      44 +      > Based on your proposal, I identified these actors and g
+         +oals:                                                          
+      45 +      > - [Actor]: [Goal]                                      
+      46 +      > - [Actor]: [Goal]                                      
+      47 +      > Are these correct? Any missing?                        
+      48 +                                                               
+      49 +      **Step 2: Write Main Success Scenarios**                 
+      50 +      For each user-goal level use case, draft 3-9 numbered ste
+         +ps                                                             
+      51 +      showing the "happy path" interaction between actor and sy
+         +stem.                                                          
+      52 +      Guidelines (from Cockburn Ch.7):                         
+      53 +      - Use simple grammar: "Actor does X. System responds with
+         + Y."                                                           
+      54 +      - Show actor's intent, not UI details (not "clicks button
+         +", but "requests export")                                      
+      55 +      - Show the process moving forward, each step achieving a 
+         +subgoal                                                        
+      56 +      - Show clearly "who has the ball" at each step           
+      57 +                                                               
+      58 +      Present draft to user for review.                        
+      59 +                                                               
+      60 +      **Step 3: Brainstorm Extensions**                        
+      61 +      For each step in the main scenario, ask:                 
+      62 +      > "What could go wrong at step N? What alternatives exist
+         +?"                                                             
+      63 +                                                               
+      64 +      Document extensions using the numbering convention:      
+      65 +      - 2a. [condition]: [handling]                            
+      66 +      - 3a. [condition]: [handling]                            
+      67 +      - 3b. [another condition]: [handling]                    
+      68 +                                                               
+      69 +      **Step 4: Add Contract Elements**                        
+      70 +      For each use case, confirm:                              
+      71 +      - Precondition: what must be true before starting?       
+      72 +      - Success Guarantee: what's true after successful complet
+         +ion?                                                           
+      73 +      - Minimal Guarantee: what's guaranteed even on failure?  
+      74 +                                                               
+      75 +      **Output Format**                                        
+      76 +      Write use-cases.md following the template. Each use case 
+         +should have:                                                   
+      77 +      - Actor, Goal, Scope, Level                              
+      78 +      - Precondition, Guarantees                               
+      79 +      - Main Success Scenario (numbered steps)                 
+      80 +      - Extensions (step-number + letter convention)           
+      81 +    requires:                                                  
+      82 +      - proposal                                               
+      83 +                                                               
+      84    - id: specs
+      85      generates: "specs/**/*.md"
+      86      description: Detailed specifications for the change
+
+● Now update specs' requires to depend on use-cases instead of proposal:
+
+● Update(OpenSpec-main\schemas\spec-driven\schema.yaml)
+  ⎿  Added 1 line, removed 1 line
+      134  
+      135        Specs should be testable - each scenario is a potential 
+           test case.
+      136      requires:
+      137 -      - proposal                                              
+      137 +      - use-cases                                             
+      138  
+      139    - id: design
+      140      generates: design.md
+
+● Now create the use-cases.ts workflow template:
+
+● Write(OpenSpec-main\src\core\templates\workflows\use-cases.ts)
+  ⎿  Wrote 177 lines to
+     OpenSpec-main\src\core\templates\workflows\use-cases.ts
+       1 /**
+       2  * Skill Template Workflow Modules
+       3  *
+       4  * This file is generated by splitting the legacy monolithic
+       5  * templates file into workflow-focused modules.
+       6  */
+       7 import type { SkillTemplate, CommandTemplate } from '../types.js
+         ';
+       8 
+       9 export function getUseCasesSkillTemplate(): SkillTemplate {
+      10   return {
+     … +167 lines (ctrl+o to expand)
+
+● Update(OpenSpec-main\src\core\templates\skill-templates.ts)
+  ⎿  Added 1 line
+      18  export { getOnboardSkillTemplate, getOpsxOnboardCommandTemplate
+           } from './workflows/onboard.js';
+      19  export { getOpsxProposeSkillTemplate, getOpsxProposeCommandTemp
+          late } from './workflows/propose.js';
+      20  export { getFeedbackSkillTemplate } from './workflows/feedback.
+          js';
+      21 +export { getUseCasesSkillTemplate, getOpsxUseCasesCommandTempla
+         +te } from './workflows/use-cases.js';                          
+
+● Now update the artifact sequence descriptions in continue-change.ts. There are
+   two places: one in the SkillTemplate and one in the CommandTemplate.
+
+● Update(OpenSpec-main\src\core\templates\workflows\continue-change.ts)
+  ⎿  Added 6 lines, removed 2 lines
+       98  
+       99  Common artifact patterns:
+      100  
+      101 -**spec-driven schema** (proposal → specs → design → tasks):   
+      101 +**spec-driven schema** (proposal → use-cases → specs → design 
+          +→ tasks):                                                     
+      102  - **proposal.md**: Ask user about the change if not clear. Fil
+           l in Why, What Changes, Capabilities, Impact.
+      103    - The Capabilities section is critical - each capability lis
+           ted will need a spec file.
+      104 +- **use-cases.md**: CONVERSATIONAL - guide user through actor-
+          +goal identification,                                          
+      105 +  main success scenarios, and extensions. Do NOT write in one 
+          +shot.                                                         
+      106  - **specs/<capability>/spec.md**: Create one spec per capabili
+           ty listed in the proposal's Capabilities section (use the capa
+           bility name, not the change name).
+      107  - **design.md**: Document technical decisions, architecture, a
+           nd implementation approach.
+      108  - **tasks.md**: Break down implementation into checkboxed task
+           s.
+     ...
+      219  
+      220  Common artifact patterns:
+      221  
+      220 -**spec-driven schema** (proposal → specs → design → tasks):   
+      222 +**spec-driven schema** (proposal → use-cases → specs → design 
+          +→ tasks):                                                     
+      223  - **proposal.md**: Ask user about the change if not clear. Fil
+           l in Why, What Changes, Capabilities, Impact.
+      224    - The Capabilities section is critical - each capability lis
+           ted will need a spec file.
+      225 +- **use-cases.md**: CONVERSATIONAL - guide user through actor-
+          +goal identification,                                          
+      226 +  main success scenarios, and extensions. Do NOT write in one 
+          +shot.                                                         
+      227  - **specs/<capability>/spec.md**: Create one spec per capabili
+           ty listed in the proposal's Capabilities section (use the capa
+           bility name, not the change name).
+      228  - **design.md**: Document technical decisions, architecture, a
+           nd implementation approach.
+      229  - **tasks.md**: Break down implementation into checkboxed task
+           s.
+
+● Now check if ff-change.ts has a similar section that needs updating:
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● Good - ff-change.ts doesn't have a spec-driven schema section to update. It
+  relies on the openspec instructions CLI for artifact-specific guidance, so no
+  changes needed there.
+
+● Now let me verify the modified files look correct:
+
+● Read 2 files (ctrl+o to expand)
+
+● All files look correct. Now let's build and test.
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npm
+      run build 2>&1)
+  ⎿  Error: Exit code 1
+
+     > @fission-ai/openspec@1.1.1 build
+     > node build.js
+
+     🔨 Building OpenSpec...
+
+     Compiling TypeScript...
+
+     ❌ Build failed!
+     … +10 lines (ctrl+o to see all)
+
+● Build failed but no detailed error. Let me run tsc directly to see the errors:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      tsc --noEmit 2>&1)
+  ⎿  Error: Exit code 1
+     npm warn exec The following package was not found and will be installed: 
+     tsc@2.0.4
+
+                                                                                
+         
+                     This is not the tsc command you are looking for            
+         
+                                                                                
+         
+
+     To get access to the TypeScript compiler, tsc, from the command line
+     either:
+
+     - Use npm install typescript to first add TypeScript to your project before
+      using npx
+     … +12 lines (ctrl+o to see all)
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      -p typescript tsc --noEmit 2>&1)
+  ⎿  Error: Exit code 2
+     npm warn exec The following package was not found and will be installed: 
+     typescript@5.9.3
+     src/cli/index.ts(1,25): error TS2307: Cannot find module 'commander' or its
+      corresponding type declarations.
+     src/cli/index.ts(2,31): error TS2307: Cannot find module 'module' or its 
+     corresponding type declarations.
+     src/cli/index.ts(3,17): error TS2307: Cannot find module 'ora' or its 
+     corresponding type declarations.
+     src/cli/index.ts(4,18): error TS2307: Cannot find module 'path' or its 
+     corresponding type declarations.
+     src/cli/index.ts(5,32): error TS2307: Cannot find module 'fs' or its 
+     corresponding type declarations.
+     src/cli/index.ts(36,43): error TS2339: Property 'url' does not exist on 
+     type 'ImportMeta'.
+     src/cli/index.ts(71,34): error TS7006: Parameter 'thisCommand' implicitly 
+     has an 'any' type.
+     src/cli/index.ts(71,47): error TS7006: Parameter 'actionCommand' implicitly
+      has an 'any' type.
+
+     … +61 lines (ctrl+o to see all)
+
+● Those are all pre-existing errors from missing node_modules (@types/node,
+  etc.), not related to my changes. Let me check if npm install is needed first:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && ls
+      node_modules/.package-lock.json 2>&1 || echo "no node_modules")
+  ⎿  ls: cannot access 'node_modules/.package-lock.json': No such file or d
+     irectory
+     no node_modules
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npm
+      install 2>&1)
+  ⎿  Error: Exit code 1
+
+     > @fission-ai/openspec@1.1.1 postinstall
+     > node scripts/postinstall.js
+
+
+     > @fission-ai/openspec@1.1.1 prepare
+     > pnpm run build
+
+     'pnpm' is not recognized as an internal or external command,
+     … +22 lines (ctrl+o to see all)
+
+● The project uses pnpm. Let me try that:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm install 2>&1)
+  ⎿  npm warn exec The following package was not found and will be installe
+     d: pnpm@10.30.1
+     Lockfile is up to date, resolution step is skipped
+     … +26 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+● Build succeeded. Now let's run tests:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test 2>&1)
+  ⎿  Error: Exit code 1
+
+     > @fission-ai/openspec@1.1.1 test C:\Users\Zhifei 
+     Dou\Desktop\Openspec_modified\OpenSpec-main
+     > vitest run
+
+
+      RUN  v3.2.4 C:/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main
+
+      ✓ test/core/archive.test.ts (23 tests) 234ms
+      ✓ test/core/legacy-cleanup.test.ts (82 tests) 223ms
+     … +82 lines (ctrl+o to see all)
+
+● The output was truncated. Let me get the test summary:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test 2>&1 | tail -60)
+  ⎿      "getFfChangeSkillTemplate": "a7332fb14c8dc3f9dec71f5d332790b4a8488
+     191e7db4ab6132ccbefecf9ded9",
+         "getNewChangeSkillTemplate": "5989672758eccf54e3bb554ab97f2c129a19
+     … +57 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+● The test failures are from hash-based parity tests that check for content
+  changes in skill templates. I modified continue-change.ts, so the hashes need
+  to be updated. Let me read the parity test file:
+
+● Read 1 file (ctrl+o to expand)
+
+● I need to update the hashes for getContinueChangeSkillTemplate and
+  getOpsxContinueCommandTemplate. Let me compute the new hashes by reading the
+  test output more carefully. The test output already shows the new hashes:
+
+  - getOpsxContinueCommandTemplate:
+  d873ade029689b0015ed3814a50966469ba6b1867d378cfcdb4505cf9522e558
+  - openspec-continue-change (skill content):
+  7b34e1792ff97bca58a200734cd42c867cac758c053c5d09f370be901bb1c574
+
+  I also need to get the new hash for getContinueChangeSkillTemplate (the
+  function payload). Let me check the full test diff:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test -- test/core/templates/skill-templates-parity.test.ts 2>&1 |
+      grep -A 5 "getCon…)
+  ⎿  -   "getContinueChangeSkillTemplate": "f2e413f0333dfd6641cc2bd1a189273
+     fdea5c399eecdde98ef528b5216f097b3",
+     +   "getContinueChangeSkillTemplate": "81bf0e5929616cf8181b7e6a59eee9b
+     … +30 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● Now I have all three new hashes. Let me update the test file:
+
+● Update(OpenSpec-main\test\core\templates\skill-templates-parity.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      32  const EXPECTED_FUNCTION_HASHES: Record<string, string> = {
+      33    getExploreSkillTemplate: '55a2a1afcba0af88c638e77e4e3870f65ed
+          82c030b4a2056d39812ae13a616be',
+      34    getNewChangeSkillTemplate: '5989672758eccf54e3bb554ab97f2c129
+          a192b12bbb7688cc1ffcf6bccb1ae9d',
+      35 -  getContinueChangeSkillTemplate: 'f2e413f0333dfd6641cc2bd1a189
+         -273fdea5c399eecdde98ef528b5216f097b3',                         
+      35 +  getContinueChangeSkillTemplate: '81bf0e5929616cf8181b7e6a59ee
+         +e9bc09c6307cf9787fed39318bcfbb485bf1',                         
+      36    getApplyChangeSkillTemplate: '26e52e67693e93fbcdd40dcd3e20949
+          c07ce019183d55a8149d0260c791cd7f4',
+      37    getFfChangeSkillTemplate: 'a7332fb14c8dc3f9dec71f5d332790b4a8
+          488191e7db4ab6132ccbefecf9ded9',
+      38    getSyncSpecsSkillTemplate: 'bded184e4c345619148de2c0ad80a5b52
+          7d4ffe45c87cc785889b9329e0f465b',
+
+● Update(OpenSpec-main\test\core\templates\skill-templates-parity.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      39    getOnboardSkillTemplate: '819a2d117ad1386187975686839cb0584b4
+          1484013d0ca6a6691f7a439a11a4a',
+      40    getOpsxExploreCommandTemplate: '91353d9e8633a3a9ce7339e796f12
+          83478fca279153f3807c92f4f8ece246b19',
+      41    getOpsxNewCommandTemplate: '62eee32d6d81a376e7be845d0891e28e6
+          262ad07482f9bfe6af12a9f0366c364',
+      42 -  getOpsxContinueCommandTemplate: '8bbaedcc95287f9e822572608137
+         -df4f49ad54cedfb08d3342d0d1c4e9716caa',                         
+      42 +  getOpsxContinueCommandTemplate: 'd873ade029689b0015ed3814a509
+         +66469ba6b1867d378cfcdb4505cf9522e558',                         
+      43    getOpsxApplyCommandTemplate: 'a9d631a07fcd832b67d263ff3800b98
+          604ab8d378baf1b0d545907ef3affa3b5',
+      44    getOpsxFfCommandTemplate: 'cdebe872cc8e0fcc25c8864b98ffd66a93
+          484c0657db94bd1285b8113092702a',
+      45    getArchiveChangeSkillTemplate: '6f8ca383fdb5a4eb9872aca81e07b
+          f0ba7f25e4de8617d7a047ca914ca7f14b9',
+
+● Update(OpenSpec-main\test\core\templates\skill-templates-parity.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      58  const EXPECTED_GENERATED_SKILL_CONTENT_HASHES: Record<string, s
+          tring> = {
+      59    'openspec-explore': '90463d00761417dfbca5cb09361adcf8bbdbbb24
+          000b86dd03647869a4104479',
+      60    'openspec-new-change': 'c324a7ace1f244aa3f534ac8e3370a2c11190
+          d6d1b85a315f26a211398310f0f',
+      61 -  'openspec-continue-change': '463cf0b980ec9c3c24774414ef2a3e48
+         -e9faa8577bc8748990f45ab3d5efe960',                             
+      61 +  'openspec-continue-change': '7b34e1792ff97bca58a200734cd42c86
+         +7cac758c053c5d09f370be901bb1c574',                             
+      62    'openspec-apply-change': 'a0084442b59be9d7e22a0382a279d470501
+          e1ecf74bdd5347e169951c9be191c',
+      63    'openspec-ff-change': '672c3a5b8df152d959b15bd7ae2be7a75ab7b8
+          eaa2ec1e0daa15c02479b27937',
+      64    'openspec-sync-specs': 'b8859cf454379a19ca35dbf59eedca6730660
+          7f44a355327f9dc851114e50bde',
+
+● Now let me also check if there are other failing tests I should worry about.
+  Let me look at the full test failure list:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test 2>&1 | grep -E "FAIL |failed" | head -20)
+  ⎿   ❯ test/commands/show.test.ts (5 tests | 5 failed) 238ms
+          → Command failed: node C:\Users\Zhifei Dou\Desktop\Openspec_modif
+     ied\OpenSpec-main\bin\openspec.js show demo --json
+     … +36 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+● Let me check if these failures are pre-existing (unrelated to my changes) by
+  checking the instruction-loader test failures:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test -- test/core/artifact-graph/instruction-loader.test.ts 2>&1 |
+      grep -E "FAIL|As…)
+  ⎿  Error: Cannot find module 'C:\Users\Zhifei'
+     Error: Cannot find module 'C:\Users\Zhifei'
+     Error: Cannot find module 'C:\Users\Zhifei'
+     … +16 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● There's a test expecting the first ready artifact after proposal to be
+  'proposal', but now with use-cases inserted, the ordering changed. Let me look
+   at this specific test:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test -- test/core/artifact-graph/instruction-loader.test.ts 2>&1 |
+      grep -B 5 "expec…)
+  ⎿     ✓ instruction-loader > loadChangeContext > should use explicit sche
+     ma over metadata schema 5ms
+        ✓ instruction-loader > loadChangeContext > should fall back to defa
+     … +16 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● Read 1 file (ctrl+o to expand)
+
+● I need to update the instruction-loader tests to reflect the new use-cases
+  artifact in the dependency chain. Let me make the necessary updates:
+
+● Update(OpenSpec-main\test\core\artifact-graph\instruction-loader.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      157        const instructions = generateInstructions(context, 'spec
+           s');
+      158  
+      159        expect(instructions.dependencies).toHaveLength(1);
+      160 -      expect(instructions.dependencies[0].id).toBe('proposal')
+          -;                                                             
+      160 +      expect(instructions.dependencies[0].id).toBe('use-cases'
+          +);                                                            
+      161        expect(instructions.dependencies[0].done).toBe(false);
+      162      });
+      163  
+
+● Update(OpenSpec-main\test\core\artifact-graph\instruction-loader.test.ts)
+  ⎿  Added 2 lines, removed 1 line
+      162      });
+      163  
+      164      it('should mark completed dependencies as done', () => {
+      165 -      // Create proposal                                      
+      165 +      // Create proposal and use-cases                        
+      166        const changeDir = path.join(tempDir, 'openspec', 'change
+           s', 'my-change');
+      167        fs.mkdirSync(changeDir, { recursive: true });
+      168        fs.writeFileSync(path.join(changeDir, 'proposal.md'), '#
+            Proposal');
+      169 +      fs.writeFileSync(path.join(changeDir, 'use-cases.md'), '
+          +# Use Cases');                                                
+      170  
+      171        const context = loadChangeContext(tempDir, 'my-change');
+      172        const instructions = generateInstructions(context, 'spec
+           s');
+
+● Update(OpenSpec-main\test\core\artifact-graph\instruction-loader.test.ts)
+  ⎿  Added 2 lines, removed 2 lines
+      178        const context = loadChangeContext(tempDir, 'my-change');
+      179        const instructions = generateInstructions(context, 'prop
+           osal');
+      180  
+      181 -      // proposal unlocks specs and design                    
+      182 -      expect(instructions.unlocks).toContain('specs');        
+      181 +      // proposal unlocks use-cases and design                
+      182 +      expect(instructions.unlocks).toContain('use-cases');    
+      183        expect(instructions.unlocks).toContain('design');
+      184      });
+      185  
+
+● Now update the formatChangeStatus tests:
+
+● Update(OpenSpec-main\test\core\artifact-graph\instruction-loader.test.ts)
+  ⎿  Added 4 lines, removed 4 lines
+      531        const proposal = status.artifacts.find(a => a.id === 'pr
+           oposal');
+      532        expect(proposal?.status).toBe('ready');
+      533  
+      534 -      // specs depends on proposal, should be blocked         
+      535 -      const specs = status.artifacts.find(a => a.id === 'specs
+          -');                                                           
+      536 -      expect(specs?.status).toBe('blocked');                  
+      537 -      expect(specs?.missingDeps).toContain('proposal');       
+      534 +      // use-cases depends on proposal, should be blocked     
+      535 +      const useCases = status.artifacts.find(a => a.id === 'us
+          +e-cases');                                                    
+      536 +      expect(useCases?.status).toBe('blocked');               
+      537 +      expect(useCases?.missingDeps).toContain('proposal');    
+      538      });
+      539  
+      540      it('should show completed artifacts as done', () => {
+
+● Update(OpenSpec-main\test\core\artifact-graph\instruction-loader.test.ts)
+  ⎿  Added 3 lines, removed 3 lines
+      548        const proposal = status.artifacts.find(a => a.id === 'pr
+           oposal');
+      549        expect(proposal?.status).toBe('done');
+      550  
+      551 -      // specs should now be ready                            
+      552 -      const specs = status.artifacts.find(a => a.id === 'specs
+          -');                                                           
+      553 -      expect(specs?.status).toBe('ready');                    
+      551 +      // use-cases should now be ready (it depends on proposal
+          +)                                                             
+      552 +      const useCases = status.artifacts.find(a => a.id === 'us
+          +e-cases');                                                    
+      553 +      expect(useCases?.status).toBe('ready');                 
+      554      });
+      555  
+      556      it('should include output paths for each artifact', () => 
+           {
+
+● Update(OpenSpec-main\test\core\artifact-graph\instruction-loader.test.ts)
+  ⎿  Added 1 line
+      571  
+      572        // Create all required files for spec-driven schema
+      573        fs.writeFileSync(path.join(changeDir, 'proposal.md'), '#
+            Proposal');
+      574 +      fs.writeFileSync(path.join(changeDir, 'use-cases.md'), '
+          +# Use Cases');                                                
+      575        fs.writeFileSync(path.join(changeDir, 'specs', 'test.md'
+           ), '# Spec');
+      576        fs.writeFileSync(path.join(changeDir, 'design.md'), '# D
+           esign');
+      577        fs.writeFileSync(path.join(changeDir, 'tasks.md'), '# Ta
+           sks');
+
+● Now update the blocked artifacts test - specs now depends on use-cases:
+
+● Update(OpenSpec-main\test\core\artifact-graph\instruction-loader.test.ts)
+  ⎿  Added 5 lines
+      587        const context = loadChangeContext(tempDir, 'my-change');
+      588        const status = formatChangeStatus(context);
+      589  
+      590 +      // specs requires use-cases                             
+      591 +      const specs = status.artifacts.find(a => a.id === 'specs
+          +');                                                           
+      592 +      expect(specs?.status).toBe('blocked');                  
+      593 +      expect(specs?.missingDeps).toContain('use-cases');      
+      594 +                                                              
+      595        // tasks requires specs and design
+      596        const tasks = status.artifacts.find(a => a.id === 'tasks
+           ');
+      597        expect(tasks?.status).toBe('blocked');
+
+● Now update the sort order test - use-cases should be between proposal and
+  specs:
+
+● Update(OpenSpec-main\test\core\artifact-graph\instruction-loader.test.ts)
+  ⎿  Added 4 lines, removed 2 lines
+      605  
+      606        const ids = status.artifacts.map(a => a.id);
+      607        const proposalIdx = ids.indexOf('proposal');
+      608 +      const useCasesIdx = ids.indexOf('use-cases');           
+      609        const specsIdx = ids.indexOf('specs');
+      610        const tasksIdx = ids.indexOf('tasks');
+      611  
+      611 -      // proposal must come before specs, specs before tasks  
+      612 -      expect(proposalIdx).toBeLessThan(specsIdx);             
+      612 +      // proposal must come before use-cases, use-cases before
+          + specs, specs before tasks                                    
+      613 +      expect(proposalIdx).toBeLessThan(useCasesIdx);          
+      614 +      expect(useCasesIdx).toBeLessThan(specsIdx);             
+      615        expect(specsIdx).toBeLessThan(tasksIdx);
+      616      });
+      617    });
+
+● Now let me check if there are other test files that might reference the
+  spec-driven schema artifact ordering:
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● There are more test files that need updating. Let me check them and focus on
+  the ones that will fail due to my changes. Let me read the key test files:
+
+● Read 3 files (ctrl+o to expand)
+
+● Let me rebuild and run just the tests affected by my changes to see what still
+   needs fixing:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm run build 2>&1 | tail -5)
+  ⎿  Cleaning dist directory...
+     Compiling TypeScript...
+     Version 5.9.3
+     … +2 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test -- test/core/artifact-graph/instruction-loader.test.ts
+      test/core/templates/ski…)
+  ⎿  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/31]⎯
+
+      FAIL  test/core/artifact-graph/workflow.integration.test.ts > artifac
+     … +21 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test -- test/core/artifact-graph/instruction-loader.test.ts
+      test/core/templates/ski…)
+  ⎿   FAIL  test/commands/artifact-workflow.test.ts > artifact-workflow CLI
+      commands > status command > shows status for scaffolded change withou
+     t proposal.md
+     … +73 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● Let me check which failures are pre-existing vs caused by my changes. Let me
+  look at a spec.test.ts failure:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test -- test/commands/spec.test.ts 2>&1 | grep -A 3 "Cannot find
+      module\|Command fa…)
+  ⎿  Error: Cannot find module 'C:\Users\Zhifei'
+         at Function._resolveFilename (node:internal/modules/cjs/loader:140
+     1:15)
+     … +20 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● These are all pre-existing Windows path-space issues (Cannot find module 
+  'C:\Users\Zhifei' - path splits at the space in "Zhifei Dou"). Not related to
+  my changes. Let me fix the tests that are directly affected:
+
+  1. workflow.integration.test.ts - 2 failures
+  2. artifact-workflow.test.ts - 5 failures
+  3. validate.enriched-output.test.ts - 1 failure
+
+  Let me start with the workflow integration test:
+
+● Update(OpenSpec-main\test\core\artifact-graph\workflow.integration.test.ts)
+  ⎿  Added 20 lines, removed 9 lines
+      42  
+      43        // Verify schema structure
+      44        expect(graph.getName()).toBe('spec-driven');
+      45 -      expect(graph.getAllArtifacts()).toHaveLength(4);         
+      45 +      expect(graph.getAllArtifacts()).toHaveLength(5);         
+      46  
+      47        // 2. Initial state - nothing complete, only proposal is 
+          ready
+      48        let completed = detectCompleted(graph, tempDir);
+     ...
+       50        expect(graph.getNextArtifacts(completed)).toEqual(['prop
+           osal']);
+       51        expect(graph.isComplete(completed)).toBe(false);
+       52        expect(normalizeBlocked(graph.getBlocked(completed))).to
+           Equal({
+       53 -        specs: ['proposal'],                                  
+       53 +        'use-cases': ['proposal'],                            
+       54 +        specs: ['use-cases'],                                 
+       55          design: ['proposal'],
+       56          tasks: ['design', 'specs'],
+       57        });
+       58  
+       58 -      // 3. Create proposal.md - now specs and design become r
+          -eady                                                          
+       59 +      // 3. Create proposal.md - now use-cases and design beco
+          +me ready                                                      
+       60        fs.writeFileSync(path.join(tempDir, 'proposal.md'), '# P
+           roposal\n\nInitial proposal content.');
+       61        completed = detectCompleted(graph, tempDir);
+       62        expect(completed).toEqual(new Set(['proposal']));
+       63 +      expect(graph.getNextArtifacts(completed).sort()).toEqual
+          +(['design', 'use-cases']);                                    
+       64 +      expect(normalizeBlocked(graph.getBlocked(completed))).to
+          +Equal({                                                       
+       65 +        specs: ['use-cases'],                                 
+       66 +        tasks: ['design', 'specs'],                           
+       67 +      });                                                     
+       68 +                                                              
+       69 +      // 4. Create use-cases.md - now specs becomes ready     
+       70 +      fs.writeFileSync(path.join(tempDir, 'use-cases.md'), '# 
+          +Use Cases\n\nUse case content.');                             
+       71 +      completed = detectCompleted(graph, tempDir);            
+       72 +      expect(completed).toEqual(new Set(['proposal', 'use-case
+          +s']));                                                        
+       73        expect(graph.getNextArtifacts(completed).sort()).toEqual
+           (['design', 'specs']);
+       74        expect(normalizeBlocked(graph.getBlocked(completed))).to
+           Equal({
+       75          tasks: ['design', 'specs'],
+       76        });
+       77  
+       67 -      // 4. Create design.md - specs still needed for tasks   
+       78 +      // 5. Create design.md - specs still needed for tasks   
+       79        fs.writeFileSync(path.join(tempDir, 'design.md'), '# Des
+           ign\n\nTechnical design content.');
+       80        completed = detectCompleted(graph, tempDir);
+       70 -      expect(completed).toEqual(new Set(['proposal', 'design']
+          -));                                                           
+       81 +      expect(completed).toEqual(new Set(['proposal', 'use-case
+          +s', 'design']));                                              
+       82        expect(graph.getNextArtifacts(completed)).toEqual(['spec
+           s']);
+       83        expect(graph.getBlocked(completed)).toEqual({
+       84          tasks: ['specs'],
+       85        });
+       86  
+       76 -      // 5. Create specs directory with a spec file - tasks be
+          -comes ready                                                   
+       87 +      // 6. Create specs directory with a spec file - tasks be
+          +comes ready                                                   
+       88        const specsDir = path.join(tempDir, 'specs');
+       89        fs.mkdirSync(specsDir, { recursive: true });
+       90        fs.writeFileSync(path.join(specsDir, 'feature-auth.md'),
+            '# Auth Spec\n\nAuthentication specification.');
+       91        completed = detectCompleted(graph, tempDir);
+       81 -      expect(completed).toEqual(new Set(['proposal', 'design',
+          - 'specs']));                                                  
+       92 +      expect(completed).toEqual(new Set(['proposal', 'use-case
+          +s', 'design', 'specs']));                                     
+       93        expect(graph.getNextArtifacts(completed)).toEqual(['task
+           s']);
+       94        expect(graph.getBlocked(completed)).toEqual({});
+       95  
+       85 -      // 6. Create tasks.md - workflow complete               
+       96 +      // 7. Create tasks.md - workflow complete               
+       97        fs.writeFileSync(path.join(tempDir, 'tasks.md'), '# Task
+           s\n\n- [ ] Implement feature');
+       98        completed = detectCompleted(graph, tempDir);
+       88 -      expect(completed).toEqual(new Set(['proposal', 'design',
+          - 'specs', 'tasks']));                                         
+       99 +      expect(completed).toEqual(new Set(['proposal', 'use-case
+          +s', 'design', 'specs', 'tasks']));                            
+      100        expect(graph.getNextArtifacts(completed)).toEqual([]);
+      101        expect(graph.isComplete(completed)).toBe(true);
+      102        expect(graph.getBlocked(completed)).toEqual({});
+
+● Now fix the out-of-order test:
+
+● Update(OpenSpec-main\test\core\artifact-graph\workflow.integration.test.ts)
+  ⎿  Added 2 lines, removed 2 lines
+      119        fs.writeFileSync(path.join(tempDir, 'proposal.md'), '# P
+           roposal');
+      120        completed = detectCompleted(graph, tempDir);
+      121        expect(completed).toEqual(new Set(['proposal', 'design']
+           ));
+      122 -      // specs is the only thing ready now (design already don
+          -e)                                                            
+      123 -      expect(graph.getNextArtifacts(completed)).toEqual(['spec
+          -s']);                                                         
+      122 +      // use-cases is the only thing ready now (design already
+          + done, specs needs use-cases)                                 
+      123 +      expect(graph.getNextArtifacts(completed)).toEqual(['use-
+          +cases']);                                                     
+      124      });
+      125  
+      126      it('should handle multiple spec files in glob pattern', ()
+            => {
+
+● Now let me fix artifact-workflow.test.ts. I need to update createTestChange to
+   support use-cases and add it to all "complete" change setups:
+
+● Read 1 file (ctrl+o to expand)
+
+● Now I need to update artifact-workflow.test.ts. The key changes:
+  1. createTestChange needs to support 'use-cases'
+  2. Artifact counts change from 4 to 5
+  3. Complete changes need 'use-cases'
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 5 lines, removed 1 line
+      41     */
+      42    async function createTestChange(
+      43      changeName: string,
+      44 -    artifacts: ('proposal' | 'design' | 'specs' | 'tasks')[] = 
+         -[]                                                             
+      44 +    artifacts: ('proposal' | 'use-cases' | 'design' | 'specs' |
+         + 'tasks')[] = []                                               
+      45    ): Promise<string> {
+      46      const changeDir = path.join(changesDir, changeName);
+      47      await fs.mkdir(changeDir, { recursive: true });
+     ...
+      53        : '## Why\nMinimal proposal.\n\n## What Changes\n- **test
+          :** Placeholder';
+      54      await fs.writeFile(path.join(changeDir, 'proposal.md'), pro
+          posalContent);
+      55  
+      56 +    if (artifacts.includes('use-cases')) {                     
+      57 +      await fs.writeFile(path.join(changeDir, 'use-cases.md'), 
+         +'## Use Cases\n\nUse case content.');                          
+      58 +    }                                                          
+      59 +                                                               
+      60      if (artifacts.includes('design')) {
+      61        await fs.writeFile(path.join(changeDir, 'design.md'), '# 
+          Design\n\nTechnical design.');
+      62      }
+
+● Now update the artifact counts (4 → 5) and complete change sets:
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      84        const result = await runCLI(['status', '--change', 'scaff
+          olded-change'], { cwd: tempDir });
+      85        expect(result.exitCode).toBe(0);
+      86        expect(result.stdout).toContain('scaffolded-change');
+      87 -      expect(result.stdout).toContain('0/4 artifacts complete')
+         -;                                                              
+      87 +      expect(result.stdout).toContain('0/5 artifacts complete')
+         +;                                                              
+      88      });
+      89  
+      90      it('shows status for a change with proposal only', async ()
+           => {
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 1 line, removed 1 line
+       95        expect(result.exitCode).toBe(0);
+       96        expect(result.stdout).toContain('minimal-change');
+       97        expect(result.stdout).toContain('spec-driven');
+       98 -      expect(result.stdout).toContain('1/4 artifacts complete'
+          -);                                                            
+       98 +      expect(result.stdout).toContain('1/5 artifacts complete'
+          +);                                                            
+       99      });
+      100  
+      101      it('shows status for a change with proposal and design', a
+           sync () => {
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      103  
+      104        const result = await runCLI(['status', '--change', 'part
+           ial-change'], { cwd: tempDir });
+      105        expect(result.exitCode).toBe(0);
+      106 -      expect(result.stdout).toContain('2/4 artifacts complete'
+          -);                                                            
+      106 +      expect(result.stdout).toContain('2/5 artifacts complete'
+          +);                                                            
+      107        expect(result.stdout).toContain('[x]');
+      108      });
+      109  
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      120        expect(json.schemaName).toBe('spec-driven');
+      121        expect(json.isComplete).toBe(false);
+      122        expect(Array.isArray(json.artifacts)).toBe(true);
+      123 -      expect(json.artifacts).toHaveLength(4);                 
+      123 +      expect(json.artifacts).toHaveLength(5);                 
+      124  
+      125        const proposalArtifact = json.artifacts.find((a: any) =>
+            a.id === 'proposal');
+      126        expect(proposalArtifact.status).toBe('done');
+
+● Now update all the complete change calls to include 'use-cases':
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      127      });
+      128  
+      129      it('shows complete status when all artifacts are done', as
+           ync () => {
+      130 -      await createTestChange('complete-change', ['proposal', '
+          -design', 'specs', 'tasks']);                                  
+      130 +      await createTestChange('complete-change', ['proposal', '
+          +use-cases', 'design', 'specs', 'tasks']);                     
+      131  
+      132        const result = await runCLI(['status', '--change', 'comp
+           lete-change'], { cwd: tempDir });
+      133        expect(result.exitCode).toBe(0);
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      131  
+      132        const result = await runCLI(['status', '--change', 'comp
+           lete-change'], { cwd: tempDir });
+      133        expect(result.exitCode).toBe(0);
+      134 -      expect(result.stdout).toContain('4/4 artifacts complete'
+          -);                                                            
+      134 +      expect(result.stdout).toContain('5/5 artifacts complete'
+          +);                                                            
+      135        expect(result.stdout).toContain('All artifacts complete!
+           ');
+      136      });
+      137  
+
+● Now update all the apply-related tests that create complete changes:
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      361  
+      362    describe('instructions apply command', () => {
+      363      it('shows apply instructions for spec-driven schema with t
+           asks', async () => {
+      364 -      await createTestChange('apply-change', ['proposal', 'des
+          -ign', 'specs', 'tasks']);                                     
+      364 +      await createTestChange('apply-change', ['proposal', 'use
+          +-cases', 'design', 'specs', 'tasks']);                        
+      365  
+      366        const result = await runCLI(['instructions', 'apply', '-
+           -change', 'apply-change'], {
+      367          cwd: tempDir,
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      386      });
+      387  
+      388      it('outputs JSON for apply instructions', async () => {
+      389 -      await createTestChange('json-apply', ['proposal', 'desig
+          -n', 'specs', 'tasks']);                                       
+      389 +      await createTestChange('json-apply', ['proposal', 'use-c
+          +ases', 'design', 'specs', 'tasks']);                          
+      390  
+      391        const result = await runCLI(
+      392          ['instructions', 'apply', '--change', 'json-apply', '-
+           -json'],
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      403      });
+      404  
+      405      it('shows schema instruction from apply block', async () =
+           > {
+      406 -      await createTestChange('instr-apply', ['proposal', 'desi
+          -gn', 'specs', 'tasks']);                                      
+      406 +      await createTestChange('instr-apply', ['proposal', 'use-
+          +cases', 'design', 'specs', 'tasks']);                         
+      407  
+      408        const result = await runCLI(['instructions', 'apply', '-
+           -change', 'instr-apply'], {
+      409          cwd: tempDir,
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      436  
+      437      it('uses spec-driven schema apply configuration', async ()
+            => {
+      438        // Create a spec-driven style change with all artifacts
+      439 -      await createTestChange('apply-schema-test', ['proposal',
+          - 'design', 'specs', 'tasks']);                                
+      439 +      await createTestChange('apply-schema-test', ['proposal',
+          + 'use-cases', 'design', 'specs', 'tasks']);                   
+      440  
+      441        const result = await runCLI(
+      442          ['instructions', 'apply', '--change', 'apply-schema-te
+           st', '--schema', 'spec-driven'],
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      448  
+      449      it('spec-driven schema uses apply block configuration', as
+           ync () => {
+      450        // Verify that spec-driven schema uses its apply block (
+           requires: [tasks])
+      451 -      await createTestChange('apply-config-test', ['proposal',
+          - 'design', 'specs', 'tasks']);                                
+      451 +      await createTestChange('apply-config-test', ['proposal',
+          + 'use-cases', 'design', 'specs', 'tasks']);                   
+      452  
+      453        const result = await runCLI(
+      454          ['instructions', 'apply', '--change', 'apply-config-te
+           st', '--json'],
+
+● Now update the done-apply test that creates all artifacts:
+
+● Update(OpenSpec-main\test\commands\artifact-workflow.test.ts)
+  ⎿  Added 1 line
+      416      it('shows all_done state when all tasks are complete', asy
+           nc () => {
+      417        const changeDir = await createTestChange('done-apply', [
+      418          'proposal',
+      419 +        'use-cases',                                          
+      420          'design',
+      421          'specs',
+      422          'tasks',
+
+● Now let me also add 'use-cases:' to the templates test that checks for
+  artifact names:
+
+● Read 1 file (ctrl+o to expand)
+
+● Now let me check if there's a validate.enriched-output.test.ts that might be
+  affected:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test -- test/commands/validate.enriched-output.test.ts 2>&1 | grep -A
+       10 "FAIL")
+  ⎿   FAIL  test/commands/change.interactive-show.test.ts > change show (in
+     teractive behavior) > prints list hint and exits non-zero when no arg
+     and non-interactive
+     … +205 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● All the remaining failures are pre-existing Windows path-space issues (Cannot 
+  find module 'C:\Users\Zhifei'). These are not related to my changes. Now let
+  me rebuild and run just the tests that should be affected by my changes:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm run build 2>&1 | tail -3)
+  ⎿  Version 5.9.3
+
+     ✅ Build completed successfully!
+  ⎿  (timeout 2m)
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test -- test/core/artifact-graph/instruction-loader.test.ts
+      test/core/templates/ski…)
+  ⎿       39|       expect(code).not.toBe(0);
+          40|       expect(stderr).toContain('has issues');
+            |                      ^
+     … +12 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+● Let me check if any of the 4 test files I specified are still failing:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test -- test/core/artifact-graph/instruction-loader.test.ts
+      test/core/templates/ski…)
+  ⎿  No matches found
+  ⎿  (timeout 3m)
+
+● No failures in the 4 test files I modified! Let me confirm by running just
+  those 4 files:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm exec vitest run test/core/artifact-graph/instruction-loader.test.ts
+      test/core/templ…)
+  ⎿     ✓ artifact-workflow CLI commands > help text > new command help sho
+     ws description  304ms
+        ✓ artifact-workflow CLI commands > experimental command (deprecated
+     … +41 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● All 100 tests pass across the 4 affected test files. Now let me also check the
+   project-config.test.ts since it references valid artifact IDs:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm exec vitest run test/core/project-config.test.ts 2>&1 | tail -10)
+  ⎿   RUN  v3.2.4 C:/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-ma
+     in
+     … +7 lines (ctrl+o to expand)
+
+● Let me also check the update test that was in the original failure output (it
+  tests skill content hashes):
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm exec vitest run test/core/update.test.ts 2>&1 | tail -10)
+  ⎿  Restart your IDE for changes to take effect.
+
+      ✓ test/core/update.test.ts (52 tests) 994ms
+     … +6 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● All passing. Let me also quickly check the schema.test.ts since it references
+  ['proposal', 'specs']:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm exec vitest run test/commands/schema.test.ts 2>&1 | tail -10)
+  ⎿   RUN  v3.2.4 C:/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-ma
+     in
+     … +7 lines (ctrl+o to expand)
+
+● All passing. Now let me run the full test suite one more time to confirm the
+  only remaining failures are the pre-existing Windows path-space issues:
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && npx
+      pnpm test 2>&1 | grep -E "FAIL |Test Files|Tests " | tail -10)
+  ⎿   FAIL  test/commands/spec.test.ts > spec command > spec list > should
+     output spec list as JSON with --json flag
+      FAIL  test/commands/spec.test.ts > spec command > spec validate > sho
+     … +19 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+● The 7 failed test files are all the pre-existing Windows path-space issues
+  (Cannot find module 'C:\Users\Zhifei'):
+
+  - test/commands/spec.test.ts (14 failures)
+  - test/commands/show.test.ts (5 failures)
+  - test/commands/spec.interactive-show.test.ts (1 failure)
+  - test/commands/spec.interactive-validate.test.ts (1 failure)
+  - test/commands/change.interactive-show.test.ts (1 failure)
+  - test/commands/change.interactive-validate.test.ts (1 failure)
+  - test/commands/validate.enriched-output.test.ts (1 failure)
+
+  All 24 failures are Cannot find module 'C:\Users\Zhifei' - a pre-existing
+  issue with Windows paths containing spaces. None are related to my changes.
+
+● Here's a summary of all changes made:
+
+  Summary
+
+  New Files Created
+
+  1. schemas/spec-driven/templates/use-cases.md - Use case template with
+  Cockburn-style structure (Actor, Goal, Scope, Level, Preconditions,
+  Guarantees, Main Success Scenario, Extensions)
+  2. src/core/templates/workflows/use-cases.ts - Exports
+  getUseCasesSkillTemplate() and getOpsxUseCasesCommandTemplate() with
+  conversational workflow instructions for guided use case creation
+
+  Modified Files
+
+  3. schemas/spec-driven/schema.yaml
+    - Updated description: proposal → use-cases → specs → design → tasks
+    - Inserted use-cases artifact between proposal and specs with Cockburn's
+  4-step progressive disclosure instructions
+    - Changed specs.requires from [proposal] to [use-cases]
+  4. src/core/templates/skill-templates.ts - Added re-export for
+  getUseCasesSkillTemplate and getOpsxUseCasesCommandTemplate
+  5. src/core/templates/workflows/continue-change.ts - Updated artifact sequence
+   description to include use-cases.md with CONVERSATIONAL note
+
+  Test Updates (6 files)
+
+  - test/core/templates/skill-templates-parity.test.ts - Updated 3 content
+  hashes for modified continue-change template
+  - test/core/artifact-graph/instruction-loader.test.ts - Updated dependency
+  expectations (specs now depends on use-cases, proposal unlocks use-cases)
+  - test/core/artifact-graph/workflow.integration.test.ts - Updated full
+  workflow test (5 artifacts, new use-cases step)
+  - test/commands/artifact-workflow.test.ts - Updated artifact counts (4→5),
+  added use-cases to all complete change setups
+
+  Verification
+
+  - npm run build passes
+  - All 1255 tests that were previously passing still pass
+  - 24 pre-existing failures remain (Windows path-space issue, unrelated to
+  changes)
+
+✻ Brewed for 17m 5s
+
+❯ NOW GO TRY TO USE IT  
+
+● Let me try it out end-to-end!
+
+● Bash(cd "/c/Users/Zhifei Dou/Desktop/Openspec_modified/OpenSpec-main" && mkdir
+       -p /tmp/openspec-test && cd /tmp/openspec-test && node "/c/Users/Zhifei
+      Dou/Desktop/Op…)
+  ⎿  - Creating change 'test-uc'...
+     ✔ Created change 'test-uc' at openspec/changes/test-uc/ (schema: spec-
+     driven)
+  ⎿  Shell cwd was reset to C:\Users\Zhifei Dou\Desktop\Openspec_modified
+
+● Bash(cd /tmp/openspec-test && node "/c/Users/Zhifei
+      Dou/Desktop/Openspec_modified/OpenSpec-main/bin/openspec.js" status
+      --change test-uc 2>&1)
+  ⎿  - Loading change status...
+     Change: test-uc
+     Schema: spec-driven
+     … +7 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to C:\Users\Zhifei Dou\Desktop\Openspec_modified
+
+● use-cases is in the artifact list, blocked by proposal. And specs is now
+  blocked by use-cases. Let me also check the JSON output:
+
+● Bash(cd /tmp/openspec-test && node "/c/Users/Zhifei
+      Dou/Desktop/Openspec_modified/OpenSpec-main/bin/openspec.js" status
+      --change test-uc --json 2>&1)
+  ⎿  - Loading change status...
+     {
+       "changeName": "test-uc",
+     … +46 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to C:\Users\Zhifei Dou\Desktop\Openspec_modified
+
+● Now let me simulate the workflow - create a proposal first, then check that
+  use-cases becomes ready:
+
+● Bash(cd /tmp/openspec-test && cat > openspec/changes/test-uc/proposal.md <<
+      'EOF'
+      ## Why…)
+  ⎿  Proposal created
+  ⎿  Shell cwd was reset to C:\Users\Zhifei Dou\Desktop\Openspec_modified
+
+● Bash(cd /tmp/openspec-test && node "/c/Users/Zhifei
+      Dou/Desktop/Openspec_modified/OpenSpec-main/bin/openspec.js" status
+      --change test-uc 2>&1)
+  ⎿  - Loading change status...
+     Change: test-uc
+     Schema: spec-driven
+     … +7 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to C:\Users\Zhifei Dou\Desktop\Openspec_modified
+
+● proposal is done, use-cases and design are now ready (unblocked), and specs is
+   still blocked by use-cases. Now let's check the use-cases instructions:
+
+● Bash(cd /tmp/openspec-test && node "/c/Users/Zhifei
+      Dou/Desktop/Openspec_modified/OpenSpec-main/bin/openspec.js" instructions
+      use-cases --change test-uc 2>&1)
+  ⎿  - Generating instructions...
+     <artifact id="use-cases" change="test-uc" schema="spec-driven">
+     … +47 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to C:\Users\Zhifei Dou\Desktop\Openspec_modified
+
+● The instructions output includes the full Cockburn-style conversational
+  guidance, the template, the dependency on proposal (marked as done), and shows
+   that completing use-cases will unlock specs.
+
+  Now let me simulate creating the use-cases artifact and verify specs becomes
+  unblocked:
+
+● Bash(cd /tmp/openspec-test && cat > openspec/changes/test-uc/use-cases.md <<
+      'EOF'
+      ## Use Cases…)
+  ⎿  Use cases created
+  ⎿  Shell cwd was reset to C:\Users\Zhifei Dou\Desktop\Openspec_modified
+
+● Bash(cd /tmp/openspec-test && node "/c/Users/Zhifei
+      Dou/Desktop/Openspec_modified/OpenSpec-main/bin/openspec.js" status
+      --change test-uc 2>&1)
+  ⎿  - Loading change status...
+     Change: test-uc
+     Schema: spec-driven
+     … +7 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to C:\Users\Zhifei Dou\Desktop\Openspec_modified
+
+● The full workflow is working:
+
+  - proposal done, use-cases done
+  - design and specs are now both ready (unblocked)
+  - tasks is still blocked by design and specs
+  - The dependency chain proposal → use-cases → specs → tasks is functioning
+  correctly
+
+  Let me clean up the test directory:
+
+● Bash(rm -rf /tmp/openspec-test)
+  ⎿  Done
+
+● Everything works end-to-end:
+
+  1. openspec new change test-uc - creates the change with 5 artifacts (was 4)
+  2. openspec status --change test-uc - shows use-cases in the artifact list,
+  correctly blocked by proposal
+  3. After creating proposal.md - use-cases becomes ready, specs stays blocked
+  by use-cases
+  4. openspec instructions use-cases --change test-uc - outputs the full
+  Cockburn-style conversational guidance with template
+  5. After creating use-cases.md - specs becomes unblocked and ready
+
+✻ Brewed for 1m 4s
