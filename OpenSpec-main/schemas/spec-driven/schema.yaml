@@ -1,6 +1,6 @@
 name: spec-driven
 version: 1
-description: Default OpenSpec workflow - proposal → use-cases → specs → design → tasks
+description: Default OpenSpec workflow - proposal → usecases → specs → design → tasks
 artifacts:
   - id: proposal
     generates: proposal.md
@@ -27,57 +27,37 @@ artifacts:
       This is the foundation - specs, design, and tasks all build on this.
     requires: []
 
-  - id: use-cases
-    generates: use-cases.md
-    description: Use cases capturing actor-goal interactions and scenarios
-    template: use-cases.md
+  - id: usecases
+    generates: usecases.md
+    description: Use cases capturing actor goals, scenarios, and extensions
+    template: usecases.md
     instruction: |
-      Create use cases by guiding the user through a structured conversation.
+      Create use cases based on the proposal, following Cockburn's methodology.
 
-      Follow Cockburn's progressive disclosure process:
+      For each capability or user-facing goal identified in the proposal,
+      write a use case that captures:
+      - WHO interacts with the system (primary actor)
+      - WHAT they want to achieve (goal)
+      - HOW the interaction unfolds (main success scenario, 3-9 steps)
+      - WHAT can go wrong (extensions/alternate flows)
 
-      **Step 1: Identify Actors and Goals**
-      Read the proposal to identify potential actors (who uses the system?)
-      and their goals (what do they want to accomplish?).
-      Present the Actor-Goal list to the user for confirmation:
-
-      > Based on your proposal, I identified these actors and goals:
-      > - [Actor]: [Goal]
-      > - [Actor]: [Goal]
-      > Are these correct? Any missing?
-
-      **Step 2: Write Main Success Scenarios**
-      For each user-goal level use case, draft 3-9 numbered steps
-      showing the "happy path" interaction between actor and system.
-      Guidelines (from Cockburn Ch.7):
+      Guidelines (from "Writing Effective Use Cases"):
+      - Title should be an active-verb goal phrase (e.g., "Register new user")
+      - Each step shows a goal succeeding - highlight the actor's intention, not UI details
       - Use simple grammar: "Actor does X. System responds with Y."
-      - Show actor's intent, not UI details (not "clicks button", but "requests export")
-      - Show the process moving forward, each step achieving a subgoal
-      - Show clearly "who has the ball" at each step
+      - Keep the GUI out - describe intent, not button clicks
+      - Steps should show who has the ball (which actor is acting)
+      - Write from a bird's eye view, not from inside the system
+      - Extensions should list what the system detects, not "checks"
 
-      Present draft to user for review.
+      Levels:
+      - Summary (cloud/kite): multi-session goals spanning days/weeks
+      - User goal (sea level): single-sitting goals that deliver value
+      - Subfunction (fish/clam): partial goals supporting user-goal use cases
 
-      **Step 3: Brainstorm Extensions**
-      For each step in the main scenario, ask:
-      > "What could go wrong at step N? What alternatives exist?"
-
-      Document extensions using the numbering convention:
-      - 2a. [condition]: [handling]
-      - 3a. [condition]: [handling]
-      - 3b. [another condition]: [handling]
-
-      **Step 4: Add Contract Elements**
-      For each use case, confirm:
-      - Precondition: what must be true before starting?
-      - Success Guarantee: what's true after successful completion?
-      - Minimal Guarantee: what's guaranteed even on failure?
-
-      **Output Format**
-      Write use-cases.md following the template. Each use case should have:
-      - Actor, Goal, Scope, Level
-      - Precondition, Guarantees
-      - Main Success Scenario (numbered steps)
-      - Extensions (step-number + letter convention)
+      Most use cases should be at User goal level.
+      Start with the main success scenario, then brainstorm extensions.
+      Each use case is a potential test case - make scenarios concrete and verifiable.
     requires:
       - proposal
 
@@ -134,7 +114,7 @@ artifacts:
 
       Specs should be testable - each scenario is a potential test case.
     requires:
-      - use-cases
+      - usecases
 
   - id: design
     generates: design.md

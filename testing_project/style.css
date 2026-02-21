@@ -1,0 +1,204 @@
+/* ============================================================
+   Sudoku Game Styles
+   ============================================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f0f2f5;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding: 40px 20px;
+  color: #333;
+}
+
+.container {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.1);
+  max-width: 520px;
+  width: 100%;
+}
+
+h1 {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: #1a1a2e;
+}
+
+/* --- Controls Bar --- */
+
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.controls select {
+  padding: 8px 12px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.controls select:focus {
+  border-color: #4a6fa5;
+}
+
+.controls button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.controls button:active {
+  transform: scale(0.97);
+}
+
+#new-game {
+  background: #4a6fa5;
+  color: #fff;
+}
+
+#new-game:hover {
+  background: #3b5d8a;
+}
+
+#reset {
+  background: #e0e0e0;
+  color: #333;
+}
+
+#reset:hover {
+  background: #d0d0d0;
+}
+
+#check {
+  background: #5cb85c;
+  color: #fff;
+}
+
+#check:hover {
+  background: #4cae4c;
+}
+
+/* --- Timer --- */
+
+.timer-bar {
+  text-align: center;
+  margin-bottom: 16px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #555;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Grid --- */
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  gap: 1px;
+  background: #333;
+  border: 3px solid #333;
+  border-radius: 4px;
+  aspect-ratio: 1;
+  margin-bottom: 16px;
+}
+
+.cell {
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s;
+  position: relative;
+}
+
+/* 3x3 box borders */
+.cell.box-left {
+  border-left: 2.5px solid #333;
+}
+
+.cell.box-top {
+  border-top: 2.5px solid #333;
+}
+
+/* Pre-filled cells */
+.cell.locked {
+  font-weight: 700;
+  color: #1a1a2e;
+  background: #f5f6fa;
+}
+
+/* Player-entered digits */
+.cell.player {
+  color: #4a6fa5;
+}
+
+/* Selected cell */
+.cell.selected {
+  background: #d4e4f7 !important;
+  outline: 2px solid #4a6fa5;
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+/* Related row/col/box highlight */
+.cell.related {
+  background: #eef3fa;
+}
+
+/* Conflict highlighting */
+.cell.conflict {
+  background: #fde0e0 !important;
+  color: #c0392b !important;
+}
+
+/* --- Message --- */
+
+.message {
+  text-align: center;
+  min-height: 24px;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.message.success {
+  color: #27ae60;
+}
+
+.message.error {
+  color: #c0392b;
+}
+
+.message.warning {
+  color: #e67e22;
+}

@@ -50,26 +50,26 @@ describe('artifact-graph workflow integration', () => {
       expect(graph.getNextArtifacts(completed)).toEqual(['proposal']);
       expect(graph.isComplete(completed)).toBe(false);
       expect(normalizeBlocked(graph.getBlocked(completed))).toEqual({
-        'use-cases': ['proposal'],
-        specs: ['use-cases'],
+        usecases: ['proposal'],
+        specs: ['usecases'],
         design: ['proposal'],
         tasks: ['design', 'specs'],
       });
 
-      // 3. Create proposal.md - now use-cases and design become ready
+      // 3. Create proposal.md - now usecases and design become ready
       fs.writeFileSync(path.join(tempDir, 'proposal.md'), '# Proposal\n\nInitial proposal content.');
       completed = detectCompleted(graph, tempDir);
       expect(completed).toEqual(new Set(['proposal']));
-      expect(graph.getNextArtifacts(completed).sort()).toEqual(['design', 'use-cases']);
+      expect(graph.getNextArtifacts(completed).sort()).toEqual(['design', 'usecases']);
       expect(normalizeBlocked(graph.getBlocked(completed))).toEqual({
-        specs: ['use-cases'],
+        specs: ['usecases'],
         tasks: ['design', 'specs'],
       });
 
-      // 4. Create use-cases.md - now specs becomes ready
-      fs.writeFileSync(path.join(tempDir, 'use-cases.md'), '# Use Cases\n\nUse case content.');
+      // 4. Create usecases.md - now specs becomes ready
+      fs.writeFileSync(path.join(tempDir, 'usecases.md'), '# Use Cases\n\nUse case content.');
       completed = detectCompleted(graph, tempDir);
-      expect(completed).toEqual(new Set(['proposal', 'use-cases']));
+      expect(completed).toEqual(new Set(['proposal', 'usecases']));
       expect(graph.getNextArtifacts(completed).sort()).toEqual(['design', 'specs']);
       expect(normalizeBlocked(graph.getBlocked(completed))).toEqual({
         tasks: ['design', 'specs'],
@@ -78,7 +78,7 @@ describe('artifact-graph workflow integration', () => {
       // 5. Create design.md - specs still needed for tasks
       fs.writeFileSync(path.join(tempDir, 'design.md'), '# Design\n\nTechnical design content.');
       completed = detectCompleted(graph, tempDir);
-      expect(completed).toEqual(new Set(['proposal', 'use-cases', 'design']));
+      expect(completed).toEqual(new Set(['proposal', 'usecases', 'design']));
       expect(graph.getNextArtifacts(completed)).toEqual(['specs']);
       expect(graph.getBlocked(completed)).toEqual({
         tasks: ['specs'],
@@ -89,14 +89,14 @@ describe('artifact-graph workflow integration', () => {
       fs.mkdirSync(specsDir, { recursive: true });
       fs.writeFileSync(path.join(specsDir, 'feature-auth.md'), '# Auth Spec\n\nAuthentication specification.');
       completed = detectCompleted(graph, tempDir);
-      expect(completed).toEqual(new Set(['proposal', 'use-cases', 'design', 'specs']));
+      expect(completed).toEqual(new Set(['proposal', 'usecases', 'design', 'specs']));
       expect(graph.getNextArtifacts(completed)).toEqual(['tasks']);
       expect(graph.getBlocked(completed)).toEqual({});
 
       // 7. Create tasks.md - workflow complete
       fs.writeFileSync(path.join(tempDir, 'tasks.md'), '# Tasks\n\n- [ ] Implement feature');
       completed = detectCompleted(graph, tempDir);
-      expect(completed).toEqual(new Set(['proposal', 'use-cases', 'design', 'specs', 'tasks']));
+      expect(completed).toEqual(new Set(['proposal', 'usecases', 'design', 'specs', 'tasks']));
       expect(graph.getNextArtifacts(completed)).toEqual([]);
       expect(graph.isComplete(completed)).toBe(true);
       expect(graph.getBlocked(completed)).toEqual({});
@@ -119,8 +119,8 @@ describe('artifact-graph workflow integration', () => {
       fs.writeFileSync(path.join(tempDir, 'proposal.md'), '# Proposal');
       completed = detectCompleted(graph, tempDir);
       expect(completed).toEqual(new Set(['proposal', 'design']));
-      // use-cases is the only thing ready now (design already done, specs needs use-cases)
-      expect(graph.getNextArtifacts(completed)).toEqual(['use-cases']);
+      // usecases is the only thing ready now (design already done, specs needs usecases)
+      expect(graph.getNextArtifacts(completed)).toEqual(['usecases']);
     });
 
     it('should handle multiple spec files in glob pattern', () => {

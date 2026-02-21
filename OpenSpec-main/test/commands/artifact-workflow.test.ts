@@ -41,7 +41,7 @@ describe('artifact-workflow CLI commands', () => {
    */
   async function createTestChange(
     changeName: string,
-    artifacts: ('proposal' | 'use-cases' | 'design' | 'specs' | 'tasks')[] = []
+    artifacts: ('proposal' | 'usecases' | 'design' | 'specs' | 'tasks')[] = []
   ): Promise<string> {
     const changeDir = path.join(changesDir, changeName);
     await fs.mkdir(changeDir, { recursive: true });
@@ -53,8 +53,8 @@ describe('artifact-workflow CLI commands', () => {
       : '## Why\nMinimal proposal.\n\n## What Changes\n- **test:** Placeholder';
     await fs.writeFile(path.join(changeDir, 'proposal.md'), proposalContent);
 
-    if (artifacts.includes('use-cases')) {
-      await fs.writeFile(path.join(changeDir, 'use-cases.md'), '## Use Cases\n\nUse case content.');
+    if (artifacts.includes('usecases')) {
+      await fs.writeFile(path.join(changeDir, 'usecases.md'), '## Use Cases\n\n### Use Case: Test use case');
     }
 
     if (artifacts.includes('design')) {
@@ -127,7 +127,7 @@ describe('artifact-workflow CLI commands', () => {
     });
 
     it('shows complete status when all artifacts are done', async () => {
-      await createTestChange('complete-change', ['proposal', 'use-cases', 'design', 'specs', 'tasks']);
+      await createTestChange('complete-change', ['proposal', 'usecases', 'design', 'specs', 'tasks']);
 
       const result = await runCLI(['status', '--change', 'complete-change'], { cwd: tempDir });
       expect(result.exitCode).toBe(0);
@@ -361,7 +361,7 @@ describe('artifact-workflow CLI commands', () => {
 
   describe('instructions apply command', () => {
     it('shows apply instructions for spec-driven schema with tasks', async () => {
-      await createTestChange('apply-change', ['proposal', 'use-cases', 'design', 'specs', 'tasks']);
+      await createTestChange('apply-change', ['proposal', 'usecases', 'design', 'specs', 'tasks']);
 
       const result = await runCLI(['instructions', 'apply', '--change', 'apply-change'], {
         cwd: tempDir,
@@ -386,7 +386,7 @@ describe('artifact-workflow CLI commands', () => {
     });
 
     it('outputs JSON for apply instructions', async () => {
-      await createTestChange('json-apply', ['proposal', 'use-cases', 'design', 'specs', 'tasks']);
+      await createTestChange('json-apply', ['proposal', 'usecases', 'design', 'specs', 'tasks']);
 
       const result = await runCLI(
         ['instructions', 'apply', '--change', 'json-apply', '--json'],
@@ -403,7 +403,7 @@ describe('artifact-workflow CLI commands', () => {
     });
 
     it('shows schema instruction from apply block', async () => {
-      await createTestChange('instr-apply', ['proposal', 'use-cases', 'design', 'specs', 'tasks']);
+      await createTestChange('instr-apply', ['proposal', 'usecases', 'design', 'specs', 'tasks']);
 
       const result = await runCLI(['instructions', 'apply', '--change', 'instr-apply'], {
         cwd: tempDir,
@@ -416,7 +416,6 @@ describe('artifact-workflow CLI commands', () => {
     it('shows all_done state when all tasks are complete', async () => {
       const changeDir = await createTestChange('done-apply', [
         'proposal',
-        'use-cases',
         'design',
         'specs',
         'tasks',
@@ -437,7 +436,7 @@ describe('artifact-workflow CLI commands', () => {
 
     it('uses spec-driven schema apply configuration', async () => {
       // Create a spec-driven style change with all artifacts
-      await createTestChange('apply-schema-test', ['proposal', 'use-cases', 'design', 'specs', 'tasks']);
+      await createTestChange('apply-schema-test', ['proposal', 'usecases', 'design', 'specs', 'tasks']);
 
       const result = await runCLI(
         ['instructions', 'apply', '--change', 'apply-schema-test', '--schema', 'spec-driven'],
@@ -449,7 +448,7 @@ describe('artifact-workflow CLI commands', () => {
 
     it('spec-driven schema uses apply block configuration', async () => {
       // Verify that spec-driven schema uses its apply block (requires: [tasks])
-      await createTestChange('apply-config-test', ['proposal', 'use-cases', 'design', 'specs', 'tasks']);
+      await createTestChange('apply-config-test', ['proposal', 'usecases', 'design', 'specs', 'tasks']);
 
       const result = await runCLI(
         ['instructions', 'apply', '--change', 'apply-config-test', '--json'],

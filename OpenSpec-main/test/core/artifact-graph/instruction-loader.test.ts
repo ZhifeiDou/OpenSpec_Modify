@@ -157,16 +157,15 @@ describe('instruction-loader', () => {
       const instructions = generateInstructions(context, 'specs');
 
       expect(instructions.dependencies).toHaveLength(1);
-      expect(instructions.dependencies[0].id).toBe('use-cases');
+      expect(instructions.dependencies[0].id).toBe('usecases');
       expect(instructions.dependencies[0].done).toBe(false);
     });
 
     it('should mark completed dependencies as done', () => {
-      // Create proposal and use-cases
+      // Create usecases (specs depends on usecases)
       const changeDir = path.join(tempDir, 'openspec', 'changes', 'my-change');
       fs.mkdirSync(changeDir, { recursive: true });
-      fs.writeFileSync(path.join(changeDir, 'proposal.md'), '# Proposal');
-      fs.writeFileSync(path.join(changeDir, 'use-cases.md'), '# Use Cases');
+      fs.writeFileSync(path.join(changeDir, 'usecases.md'), '# Use Cases');
 
       const context = loadChangeContext(tempDir, 'my-change');
       const instructions = generateInstructions(context, 'specs');
@@ -178,8 +177,8 @@ describe('instruction-loader', () => {
       const context = loadChangeContext(tempDir, 'my-change');
       const instructions = generateInstructions(context, 'proposal');
 
-      // proposal unlocks use-cases and design
-      expect(instructions.unlocks).toContain('use-cases');
+      // proposal unlocks usecases and design
+      expect(instructions.unlocks).toContain('usecases');
       expect(instructions.unlocks).toContain('design');
     });
 
@@ -531,10 +530,15 @@ rules:
       const proposal = status.artifacts.find(a => a.id === 'proposal');
       expect(proposal?.status).toBe('ready');
 
-      // use-cases depends on proposal, should be blocked
-      const useCases = status.artifacts.find(a => a.id === 'use-cases');
-      expect(useCases?.status).toBe('blocked');
-      expect(useCases?.missingDeps).toContain('proposal');
+      // usecases depends on proposal, should be blocked
+      const usecases = status.artifacts.find(a => a.id === 'usecases');
+      expect(usecases?.status).toBe('blocked');
+      expect(usecases?.missingDeps).toContain('proposal');
+
+      // specs depends on usecases, should be blocked
+      const specs = status.artifacts.find(a => a.id === 'specs');
+      expect(specs?.status).toBe('blocked');
+      expect(specs?.missingDeps).toContain('usecases');
     });
 
     it('should show completed artifacts as done', () => {
@@ -548,9 +552,9 @@ rules:
       const proposal = status.artifacts.find(a => a.id === 'proposal');
       expect(proposal?.status).toBe('done');
 
-      // use-cases should now be ready (it depends on proposal)
-      const useCases = status.artifacts.find(a => a.id === 'use-cases');
-      expect(useCases?.status).toBe('ready');
+      // usecases should now be ready (depends on proposal)
+      const usecases = status.artifacts.find(a => a.id === 'usecases');
+      expect(usecases?.status).toBe('ready');
     });
 
     it('should include output paths for each artifact', () => {
@@ -571,7 +575,7 @@ rules:
 
       // Create all required files for spec-driven schema
       fs.writeFileSync(path.join(changeDir, 'proposal.md'), '# Proposal');
-      fs.writeFileSync(path.join(changeDir, 'use-cases.md'), '# Use Cases');
+      fs.writeFileSync(path.join(changeDir, 'usecases.md'), '# Use Cases');
       fs.writeFileSync(path.join(changeDir, 'specs', 'test.md'), '# Spec');
       fs.writeFileSync(path.join(changeDir, 'design.md'), '# Design');
       fs.writeFileSync(path.join(changeDir, 'tasks.md'), '# Tasks');
@@ -587,11 +591,6 @@ rules:
       const context = loadChangeContext(tempDir, 'my-change');
       const status = formatChangeStatus(context);
 
-      // specs requires use-cases
-      const specs = status.artifacts.find(a => a.id === 'specs');
-      expect(specs?.status).toBe('blocked');
-      expect(specs?.missingDeps).toContain('use-cases');
-
       // tasks requires specs and design
       const tasks = status.artifacts.find(a => a.id === 'tasks');
       expect(tasks?.status).toBe('blocked');
@@ -605,13 +604,11 @@ rules:
 
       const ids = status.artifacts.map(a => a.id);
       const proposalIdx = ids.indexOf('proposal');
-      const useCasesIdx = ids.indexOf('use-cases');
       const specsIdx = ids.indexOf('specs');
       const tasksIdx = ids.indexOf('tasks');
 
-      // proposal must come before use-cases, use-cases before specs, specs before tasks
-      expect(proposalIdx).toBeLessThan(useCasesIdx);
-      expect(useCasesIdx).toBeLessThan(specsIdx);
+      // proposal must come before specs, specs before tasks
+      expect(proposalIdx).toBeLessThan(specsIdx);
       expect(specsIdx).toBeLessThan(tasksIdx);
     });
   });
