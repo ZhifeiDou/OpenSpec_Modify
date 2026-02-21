@@ -177,9 +177,8 @@ describe('instruction-loader', () => {
       const context = loadChangeContext(tempDir, 'my-change');
       const instructions = generateInstructions(context, 'proposal');
 
-      // proposal unlocks usecases and design
-      expect(instructions.unlocks).toContain('usecases');
-      expect(instructions.unlocks).toContain('design');
+      // proposal unlocks usecases (design depends on specs, not proposal)
+      expect(instructions.unlocks).toEqual(['usecases']);
     });
 
     it('should have empty dependencies for root artifact', () => {

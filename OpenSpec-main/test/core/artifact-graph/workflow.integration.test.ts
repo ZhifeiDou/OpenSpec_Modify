@@ -52,17 +52,18 @@ describe('artifact-graph workflow integration', () => {
       expect(normalizeBlocked(graph.getBlocked(completed))).toEqual({
         usecases: ['proposal'],
         specs: ['usecases'],
-        design: ['proposal'],
+        design: ['specs'],
         tasks: ['design', 'specs'],
       });
 
-      // 3. Create proposal.md - now usecases and design become ready
+      // 3. Create proposal.md - now usecases becomes ready
       fs.writeFileSync(path.join(tempDir, 'proposal.md'), '# Proposal\n\nInitial proposal content.');
       completed = detectCompleted(graph, tempDir);
       expect(completed).toEqual(new Set(['proposal']));
-      expect(graph.getNextArtifacts(completed).sort()).toEqual(['design', 'usecases']);
+      expect(graph.getNextArtifacts(completed)).toEqual(['usecases']);
       expect(normalizeBlocked(graph.getBlocked(completed))).toEqual({
         specs: ['usecases'],
+        design: ['specs'],
         tasks: ['design', 'specs'],
       });
 
@@ -70,8 +71,9 @@ describe('artifact-graph workflow integration', () => {
       fs.writeFileSync(path.join(tempDir, 'usecases.md'), '# Use Cases\n\nUse case content.');
       completed = detectCompleted(graph, tempDir);
       expect(completed).toEqual(new Set(['proposal', 'usecases']));
-      expect(graph.getNextArtifacts(completed).sort()).toEqual(['design', 'specs']);
+      expect(graph.getNextArtifacts(completed)).toEqual(['specs']);
       expect(normalizeBlocked(graph.getBlocked(completed))).toEqual({
+        design: ['specs'],
         tasks: ['design', 'specs'],
       });
 

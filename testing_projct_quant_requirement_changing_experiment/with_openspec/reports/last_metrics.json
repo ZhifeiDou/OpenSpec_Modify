@@ -1,0 +1,16 @@
+{
+  "annual_return": -0.11537283417208277,
+  "annual_volatility": 0.0823389802639947,
+  "sharpe_ratio": -1.6929310327215685,
+  "max_drawdown": 0.2701878387296483,
+  "max_drawdown_duration": 354,
+  "calmar_ratio": -0.42700972299321577,
+  "sortino_ratio": -1.8670434039761483,
+  "total_return": -0.20939931225694985,
+  "win_rate": 0.3,
+  "profit_loss_ratio": 0.279316041808707,
+  "total_trades": 459,
+  "total_costs": 11545716.29175695,
+  "annual_turnover": 11.931871159826088,
+  "n_trading_days": 483
+}

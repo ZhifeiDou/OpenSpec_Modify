@@ -142,7 +142,7 @@ artifacts:
 
       Good design docs explain the "why" behind technical decisions.
     requires:
-      - proposal
+      - specs
 
   - id: tasks
     generates: tasks.md
