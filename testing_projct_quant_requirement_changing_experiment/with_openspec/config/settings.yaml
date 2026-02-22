@@ -58,6 +58,25 @@ risk:
   max_drawdown_liquidate: 0.20  # Full liquidation at 20% drawdown
   metal_crash_threshold: 0.03  # Alert when metal drops > 3% daily
 
+  # Volatility-adaptive stop-loss
+  volatility_short_window: 20    # Days for recent volatility
+  volatility_long_window: 120    # Days for historical median
+  atr_multiple_low_vol: 1.5     # ATR multiple in low volatility
+  atr_multiple_normal_vol: 2.0  # ATR multiple in normal volatility
+  atr_multiple_high_vol: 2.5    # ATR multiple in high volatility
+  volatility_low_threshold: 0.8  # Below this = low volatility
+  volatility_high_threshold: 1.5 # Above this = high volatility
+
+  # Circuit breaker
+  circuit_breaker_level1_threshold: 0.03  # 3% daily drop triggers Level 1
+  circuit_breaker_level2_threshold: 0.05  # 5% daily drop triggers Level 2
+  circuit_breaker_level1_recovery_days: 3  # Consecutive up days for L1 recovery
+  circuit_breaker_level2_recovery_days: 5  # Consecutive up days for L2 recovery
+
+  # Dynamic rebalance frequency thresholds
+  volatility_biweekly_threshold: 1.5  # Above this = bi-weekly rebalance
+  volatility_weekly_threshold: 2.0    # Above this = weekly rebalance
+
 backtest:
   initial_capital: 1000000
   stamp_tax: 0.0005  # 0.05% sell only

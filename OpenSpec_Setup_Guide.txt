@@ -1,0 +1,155 @@
+============================================================
+  在新电脑上安装 OpenSpec (Modified Version) - 详细指南
+============================================================
+
+前提条件
+--------
+在开始之前，新电脑需要安装以下软件：
+
+1. Node.js (>= 20.19.0)
+   - 下载地址: https://nodejs.org/ (选择 LTS 版本)
+   - 安装完成后验证:
+       node --version   # 应该显示 v20.x 或更高
+       npm --version
+
+2. pnpm (包管理器)
+       npm install -g pnpm
+
+3. Git
+   - Windows: https://git-scm.com/download/win
+   - macOS: xcode-select --install
+
+4. Claude Code (Anthropic CLI)
+       npm install -g @anthropic-ai/claude-code
+
+
+============================================================
+步骤 1: 克隆代码仓库
+============================================================
+
+    git clone https://github.com/ZhifeiDou/OpenSpec_Modify.git
+    cd OpenSpec_Modify
+
+
+============================================================
+步骤 2: 构建修改版 OpenSpec
+============================================================
+
+进入 OpenSpec 源码目录，安装依赖并编译：
+
+    cd OpenSpec-main
+    pnpm install
+    pnpm build
+
+验证构建成功：
+
+    ls dist/    # 应该看到 cli/, core/, utils/ 等目录
+
+
+============================================================
+步骤 3: 全局链接本地 OpenSpec
+============================================================
+
+将本地修改版 OpenSpec 链接为全局命令：
+
+    # 仍然在 OpenSpec-main 目录下
+    pnpm link --global
+
+验证全局命令可用：
+
+    openspec --version    # 应该显示 1.1.1
+
+注意: 如果 pnpm link --global 不工作，可以用 npm link 替代。
+
+
+============================================================
+步骤 4: 初始化 Claude Code 集成
+============================================================
+
+回到项目根目录，运行 openspec init 来生成 .claude/ 目录：
+
+    cd ..    # 回到 OpenSpec_Modify 根目录
+    openspec init --tools claude --force
+
+这会自动生成：
+  - .claude/commands/opsx/  (所有 slash commands)
+  - .claude/skills/         (所有 AI skills)
+
+注意: .claude/ 目录被 .gitignore 排除了，所以每台新电脑都需要运行这一步。
+
+
+============================================================
+步骤 5: 验证安装
+============================================================
+
+    # 检查 openspec 目录结构完整
+    ls openspec/                # 应该有 config.yaml, specs/, changes/
+
+    # 检查 .claude 目录已生成
+    ls .claude/                 # 应该有 commands/, skills/
+    ls .claude/commands/opsx/   # 应该有 11 个 .md 文件
+    ls .claude/skills/          # 应该有 11 个技能目录
+
+
+============================================================
+步骤 6: 启动 Claude Code
+============================================================
+
+    claude
+
+启动后，你应该能使用所有 /opsx: 命令：
+  - /opsx:new       开始新的 change
+  - /opsx:ff        快速生成所有 artifacts
+  - /opsx:apply     实施任务
+  - /opsx:verify    验证实现
+  - /opsx:archive   归档完成的 change
+
+
+============================================================
+完整一键脚本 (可选)
+============================================================
+
+把以下内容保存为 setup.sh，一键完成所有步骤：
+
+    #!/bin/bash
+    set -e
+
+    echo "=== Step 1: Clone repo ==="
+    git clone https://github.com/ZhifeiDou/OpenSpec_Modify.git
+    cd OpenSpec_Modify
+
+    echo "=== Step 2: Build OpenSpec ==="
+    cd OpenSpec-main
+    pnpm install
+    pnpm build
+
+    echo "=== Step 3: Link globally ==="
+    pnpm link --global
+
+    echo "=== Step 4: Init Claude integration ==="
+    cd ..
+    openspec init --tools claude --force
+
+    echo "=== Done! ==="
+    echo "Run 'claude' to start using OpenSpec."
+    openspec --version
+
+
+============================================================
+常见问题
+============================================================
+
+问题: node: command not found
+解决: 安装 Node.js >= 20.19.0
+
+问题: pnpm: command not found
+解决: 运行 npm install -g pnpm
+
+问题: openspec: command not found (link 后)
+解决: 检查 pnpm global bin 是否在 PATH 中: pnpm bin -g
+
+问题: .claude/ 目录下缺少文件
+解决: 重新运行 openspec init --tools claude --force
+
+问题: 构建报错 Cannot find module
+解决: 确保在 OpenSpec-main/ 下先运行了 pnpm install

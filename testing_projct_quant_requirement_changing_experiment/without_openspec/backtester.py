@@ -1,4 +1,5 @@
-"""回测引擎 — 事件驱动逐日回测 + 绩效统计"""
+"""回测引擎 — 事件驱动逐日回测 + 绩效统计
+增加：波动率自适应止损、动态再平衡频率、熔断机制"""
 
 import numpy as np
 import pandas as pd
@@ -58,13 +59,19 @@ def run_backtest(stock_list, config=None):
 
     # ── 回测主循环 ──
     cash = capital
-    positions = {}  # {code: {"shares": int, "cost": float}}
+    positions = {}  # {code: {"shares": int, "cost": float, "buy_date": str}}
     equity_curve = []
     trades = []
 
-    # 每20个交易日重新调仓
+    # 动态再平衡相关变量
     rebalance_interval = 20
     days_since_rebalance = rebalance_interval  # 首日即调仓
+
+    # 熔断相关变量
+    circuit_breaker_active = False
+    circuit_breaker_level = 0  # 0=正常, 1=一级, 2=二级
+    circuit_breaker_recovery_count = 0
+    prev_equity = capital
 
     for i, date in enumerate(all_dates):
         # ── 计算当前组合市值 ──
@@ -84,27 +91,122 @@ def run_backtest(stock_list, config=None):
 
         equity_curve.append({"date": date, "equity": round(portfolio_value, 2)})
 
-        # ── 止损检查 ──
-        for code, pos in list(positions.items()):
-            if code in all_hist and date in all_hist[code].index:
-                price = float(all_hist[code].loc[date, "close"])
-                pnl_pct = price / pos["cost"] - 1
-                if pnl_pct < RISK["stop_loss"]:
-                    # 触发止损，卖出
-                    sell_price = price * (1 - slippage)
-                    revenue = pos["shares"] * sell_price
-                    fee = revenue * (commission + stamp_tax)
-                    cash += revenue - fee
-                    trades.append({
-                        "date": date, "code": code, "action": "sell_stoploss",
-                        "price": round(sell_price, 2), "shares": pos["shares"],
-                        "fee": round(fee, 2),
-                    })
-                    del positions[code]
+        # ── 计算波动率比值（用于自适应止损和动态再平衡） ──
+        vol_ratio = _calc_volatility_ratio(all_hist, all_dates, i)
+
+        # ── 熔断检查 ──
+        if i > 0:
+            daily_return = (portfolio_value - prev_equity) / prev_equity
+            if circuit_breaker_active:
+                # 检查恢复条件
+                if portfolio_value > prev_equity:
+                    circuit_breaker_recovery_count += 1
+                else:
+                    circuit_breaker_recovery_count = 0
+                # 一级熔断需要3天恢复，二级需要5天
+                recovery_needed = 3 if circuit_breaker_level == 1 else 5
+                if circuit_breaker_recovery_count >= recovery_needed:
+                    circuit_breaker_active = False
+                    circuit_breaker_level = 0
+                    circuit_breaker_recovery_count = 0
+                # 检查是否从一级升级到二级
+                if circuit_breaker_level == 1 and daily_return < RISK["circuit_breaker_l2"]:
+                    circuit_breaker_level = 2
+                    circuit_breaker_recovery_count = 0
+                    # 清仓所有持仓
+                    for code in list(positions.keys()):
+                        if code in all_hist and date in all_hist[code].index:
+                            price = float(all_hist[code].loc[date, "close"]) * (1 - slippage)
+                            revenue = positions[code]["shares"] * price
+                            fee = revenue * (commission + stamp_tax)
+                            cash += revenue - fee
+                            trades.append({
+                                "date": date, "code": code, "action": "sell_circuit_breaker",
+                                "price": round(price, 2), "shares": positions[code]["shares"],
+                                "fee": round(fee, 2),
+                            })
+                            del positions[code]
+            else:
+                # 检查是否触发熔断
+                if daily_return < RISK["circuit_breaker_l2"]:
+                    # 二级熔断：全部清仓
+                    circuit_breaker_active = True
+                    circuit_breaker_level = 2
+                    circuit_breaker_recovery_count = 0
+                    for code in list(positions.keys()):
+                        if code in all_hist and date in all_hist[code].index:
+                            price = float(all_hist[code].loc[date, "close"]) * (1 - slippage)
+                            revenue = positions[code]["shares"] * price
+                            fee = revenue * (commission + stamp_tax)
+                            cash += revenue - fee
+                            trades.append({
+                                "date": date, "code": code, "action": "sell_circuit_breaker",
+                                "price": round(price, 2), "shares": positions[code]["shares"],
+                                "fee": round(fee, 2),
+                            })
+                            del positions[code]
+                elif daily_return < RISK["circuit_breaker_l1"]:
+                    # 一级熔断：仓位减半
+                    circuit_breaker_active = True
+                    circuit_breaker_level = 1
+                    circuit_breaker_recovery_count = 0
+                    for code in list(positions.keys()):
+                        if code in all_hist and date in all_hist[code].index:
+                            shares_to_sell = positions[code]["shares"] // 2
+                            if shares_to_sell > 0:
+                                price = float(all_hist[code].loc[date, "close"]) * (1 - slippage)
+                                revenue = shares_to_sell * price
+                                fee = revenue * (commission + stamp_tax)
+                                cash += revenue - fee
+                                positions[code]["shares"] -= shares_to_sell
+                                trades.append({
+                                    "date": date, "code": code, "action": "sell_circuit_breaker",
+                                    "price": round(price, 2), "shares": shares_to_sell,
+                                    "fee": round(fee, 2),
+                                })
+                            if positions[code]["shares"] <= 0:
+                                del positions[code]
+
+        prev_equity = portfolio_value
+
+        # ── 止损检查（波动率自适应） ──
+        if not circuit_breaker_active:
+            # 根据波动率比值确定止损线
+            if vol_ratio < 0.8:
+                stop_loss_pct = RISK.get("stop_loss_low_vol", -0.06)
+            elif vol_ratio > 1.5:
+                stop_loss_pct = RISK.get("stop_loss_high_vol", -0.10)
+            else:
+                stop_loss_pct = RISK["stop_loss"]
+
+            for code, pos in list(positions.items()):
+                if code in all_hist and date in all_hist[code].index:
+                    price = float(all_hist[code].loc[date, "close"])
+                    pnl_pct = price / pos["cost"] - 1
+                    if pnl_pct < stop_loss_pct:
+                        # 触发止损，卖出
+                        sell_price = price * (1 - slippage)
+                        revenue = pos["shares"] * sell_price
+                        fee = revenue * (commission + stamp_tax)
+                        cash += revenue - fee
+                        trades.append({
+                            "date": date, "code": code, "action": "sell_stoploss",
+                            "price": round(sell_price, 2), "shares": pos["shares"],
+                            "fee": round(fee, 2),
+                        })
+                        del positions[code]
+
+        # ── 动态再平衡频率 ──
+        if vol_ratio > 2.0:
+            current_rebalance_interval = 5  # 周度
+        elif vol_ratio > 1.5:
+            current_rebalance_interval = 10  # 双周
+        else:
+            current_rebalance_interval = 20  # 月度
 
         # ── 调仓日 ──
         days_since_rebalance += 1
-        if days_since_rebalance >= rebalance_interval:
+        if not circuit_breaker_active and days_since_rebalance >= current_rebalance_interval:
             days_since_rebalance = 0
 
             # 计算截至当前日期的因子评分（使用最近的数据）
@@ -172,7 +274,7 @@ def run_backtest(stock_list, config=None):
                             fee = cost * commission
                             if cash >= cost + fee:
                                 cash -= cost + fee
-                                positions[code] = {"shares": shares, "cost": price}
+                                positions[code] = {"shares": shares, "cost": price, "buy_date": date}
                                 trades.append({
                                     "date": date, "code": code, "action": "buy",
                                     "price": round(price, 2), "shares": shares,
@@ -199,6 +301,63 @@ def run_backtest(stock_list, config=None):
         "trades": trades,
         "metrics": metrics,
     }
+
+
+def _calc_volatility_ratio(all_hist, all_dates, current_idx):
+    """计算波动率比值（简化版）"""
+    if current_idx < 20:
+        return 1.0  # 数据不足，返回正常
+
+    # 用所有股票的平均收盘价作为代表
+    recent_returns = []
+    for j in range(max(0, current_idx - 20), current_idx):
+        day_prices = []
+        for code, df in all_hist.items():
+            if all_dates[j] in df.index and all_dates[j + 1] in df.index:
+                p1 = float(df.loc[all_dates[j], "close"])
+                p2 = float(df.loc[all_dates[j + 1], "close"])
+                if p1 > 0:
+                    day_prices.append(p2 / p1 - 1)
+        if day_prices:
+            recent_returns.append(np.mean(day_prices))
+
+    if len(recent_returns) < 10:
+        return 1.0
+
+    vol_short = np.std(recent_returns)
+
+    # 长期波动率
+    long_start = max(0, current_idx - 120)
+    long_returns = []
+    for j in range(long_start, current_idx):
+        if j + 1 < len(all_dates):
+            day_prices = []
+            for code, df in all_hist.items():
+                if all_dates[j] in df.index and all_dates[j + 1] in df.index:
+                    p1 = float(df.loc[all_dates[j], "close"])
+                    p2 = float(df.loc[all_dates[j + 1], "close"])
+                    if p1 > 0:
+                        day_prices.append(p2 / p1 - 1)
+            if day_prices:
+                long_returns.append(np.mean(day_prices))
+
+    if len(long_returns) < 20:
+        return 1.0
+
+    # 计算滚动波动率的中位数
+    rolling_vols = []
+    for k in range(20, len(long_returns) + 1):
+        window = long_returns[k - 20:k]
+        rolling_vols.append(np.std(window))
+
+    if not rolling_vols:
+        return 1.0
+
+    vol_median = np.median(rolling_vols)
+    if vol_median <= 0:
+        return 1.0
+
+    return vol_short / vol_median
 
 
 def _calc_metrics(equity_curve, initial_capital):

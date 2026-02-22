@@ -17,6 +17,13 @@ from src.strategy.allocator import allocate_weights
 from src.strategy.timing import compute_timing_signal
 from src.risk.stop_loss import check_hard_stop, check_trailing_stop
 from src.risk.drawdown import check_drawdown
+from src.risk.volatility import compute_volatility_ratio, get_rebalance_regime
+from src.risk.circuit_breaker import (
+    CircuitBreakerState,
+    check_circuit_breaker,
+    is_circuit_breaker_active,
+    get_position_scale,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -52,20 +59,27 @@ class BacktestEngine:
     def run(self, start_date: str, end_date: str) -> BacktestResult:
         """Run backtest over the specified date range.
 
-        Daily loop:
+        Daily loop (updated with volatility-adaptive risk controls):
         1. Update prices in portfolio
-        2. Check risk / stop-loss conditions
-        3. Execute pending orders (from previous day due to T+1)
-        4. On rebalance days: compute factors → score → generate signals
-        5. Record NAV
+        2. Compute daily NAV change
+        3. Check circuit breaker (before other risk checks)
+        4. Check risk / stop-loss conditions (with adaptive ATR multiple)
+        5. Execute pending orders (from previous day due to T+1)
+        6. On rebalance days (dynamic frequency): compute factors → score → signals
+        7. Record NAV
         """
         bt_cfg = self.config.get("backtest", {})
         initial_capital = bt_cfg.get("initial_capital", 1_000_000)
-        rebalance_freq = self.config.get("strategy", {}).get("rebalance_freq", "monthly")
 
         portfolio = Portfolio(initial_capital=initial_capital)
         trade_log: list[TradeRecord] = []
         pending_orders: list[dict] = []
+
+        # Circuit breaker state
+        cb_state = CircuitBreakerState()
+
+        # Dynamic rebalance tracking
+        last_rebalance_date: str | None = None
 
         # Get trading dates
         trading_dates = self._get_trading_dates(start_date, end_date)
@@ -77,12 +91,9 @@ class BacktestEngine:
                 metrics={},
             )
 
-        rebalance_dates = self._get_rebalance_dates(trading_dates, rebalance_freq)
-        last_rebalance_month = None
-
         logger.info(
-            "Starting backtest: %s to %s (%d trading days, %d rebalance dates)",
-            start_date, end_date, len(trading_dates), len(rebalance_dates),
+            "Starting backtest: %s to %s (%d trading days)",
+            start_date, end_date, len(trading_dates),
         )
 
         for date in trading_dates:
@@ -92,20 +103,80 @@ class BacktestEngine:
             prices = self._get_current_prices(portfolio.holdings.keys(), date_str)
             portfolio.update_prices(prices)
 
-            # 2. Risk checks — generate emergency sell orders
-            emergency_sells = self._check_risk(portfolio, date_str)
-            for sym in emergency_sells:
-                if sym in portfolio.holdings:
-                    h = portfolio.holdings[sym]
-                    result = self.broker.execute_sell(portfolio, sym, h.shares, date_str)
-                    if not result.rejected:
-                        trade_log.append(TradeRecord(
-                            date=date_str, symbol=sym, action="SELL_STOP",
-                            shares=result.executed_shares, price=result.price,
-                            cost=result.total_cost,
-                        ))
+            # 2. Compute volatility ratio for today
+            volatility_ratio = compute_volatility_ratio(self.store, date_str)
 
-            # 3. Execute pending orders from previous rebalance
+            # 3. Check circuit breaker FIRST
+            cb_actions = []
+            if len(portfolio.nav_history) >= 1:
+                current_nav = portfolio.nav
+                previous_nav = portfolio.nav_history[-1] if portfolio.nav_history else None
+                cb_state, cb_actions = check_circuit_breaker(
+                    current_nav, previous_nav, cb_state, self.config,
+                )
+                if cb_state.trigger_date is None and cb_actions:
+                    cb_state.trigger_date = date_str
+
+            # Execute circuit breaker actions
+            if "liquidate" in cb_actions:
+                for sym in list(portfolio.holdings.keys()):
+                    h = portfolio.holdings[sym]
+                    buy_date = h.buy_date if hasattr(h, 'buy_date') else ""
+                    can_sell = buy_date < date_str
+                    if can_sell:
+                        result = self.broker.execute_sell(portfolio, sym, h.shares, date_str)
+                        if not result.rejected:
+                            trade_log.append(TradeRecord(
+                                date=date_str, symbol=sym, action="SELL_CIRCUIT_BREAKER",
+                                shares=result.executed_shares, price=result.price,
+                                cost=result.total_cost,
+                            ))
+                    else:
+                        # T+1 constraint: defer to next day
+                        pending_orders.append({
+                            "symbol": sym, "action": "SELL",
+                            "shares": h.shares,
+                        })
+                        logger.info("T+1 constraint: %s sell deferred to next trading day", sym)
+
+            elif "reduce_50" in cb_actions:
+                for sym in list(portfolio.holdings.keys()):
+                    h = portfolio.holdings[sym]
+                    buy_date = h.buy_date if hasattr(h, 'buy_date') else ""
+                    can_sell = buy_date < date_str
+                    shares_to_sell = h.shares // 2
+                    if shares_to_sell <= 0:
+                        continue
+                    if can_sell:
+                        result = self.broker.execute_sell(portfolio, sym, shares_to_sell, date_str)
+                        if not result.rejected:
+                            trade_log.append(TradeRecord(
+                                date=date_str, symbol=sym, action="SELL_CIRCUIT_BREAKER",
+                                shares=result.executed_shares, price=result.price,
+                                cost=result.total_cost,
+                            ))
+                    else:
+                        pending_orders.append({
+                            "symbol": sym, "action": "SELL",
+                            "shares": shares_to_sell,
+                        })
+                        logger.info("T+1 constraint: %s sell deferred to next trading day", sym)
+
+            # 4. Risk checks — generate emergency sell orders (skip if circuit breaker active)
+            if not is_circuit_breaker_active(cb_state):
+                emergency_sells = self._check_risk(portfolio, date_str, volatility_ratio)
+                for sym in emergency_sells:
+                    if sym in portfolio.holdings:
+                        h = portfolio.holdings[sym]
+                        result = self.broker.execute_sell(portfolio, sym, h.shares, date_str)
+                        if not result.rejected:
+                            trade_log.append(TradeRecord(
+                                date=date_str, symbol=sym, action="SELL_STOP",
+                                shares=result.executed_shares, price=result.price,
+                                cost=result.total_cost,
+                            ))
+
+            # 5. Execute pending orders from previous rebalance / deferred circuit breaker
             for order in pending_orders:
                 sym = order["symbol"]
                 if order["action"] == "BUY":
@@ -131,13 +202,18 @@ class BacktestEngine:
                             ))
             pending_orders = []
 
-            # 4. Rebalance check
-            if date_str in rebalance_dates:
-                pending_orders = self._generate_rebalance_orders(
-                    portfolio, date_str
-                )
+            # 6. Dynamic rebalance check (skip if circuit breaker is active)
+            if not is_circuit_breaker_active(cb_state):
+                if self._is_rebalance_day(date_str, volatility_ratio, last_rebalance_date, trading_dates):
+                    position_scale = get_position_scale(cb_state)
+                    pending_orders = self._generate_rebalance_orders(
+                        portfolio, date_str, position_scale=position_scale,
+                    )
+                    last_rebalance_date = date_str
+            else:
+                logger.debug("Rebalance skipped on %s: circuit breaker active (%s)", date_str, cb_state.status)
 
-            # 5. Record NAV
+            # 7. Record NAV
             # Update prices again after trades
             prices = self._get_current_prices(portfolio.holdings.keys(), date_str)
             portfolio.update_prices(prices)
@@ -174,7 +250,7 @@ class BacktestEngine:
         return [r[0] for r in rows]
 
     def _get_rebalance_dates(self, trading_dates: list[str], freq: str) -> set[str]:
-        """Determine rebalance dates based on frequency."""
+        """Determine rebalance dates based on frequency (legacy static method)."""
         if not trading_dates:
             return set()
 
@@ -201,6 +277,51 @@ class BacktestEngine:
 
         return rebalance
 
+    def _is_rebalance_day(
+        self,
+        date_str: str,
+        volatility_ratio: float,
+        last_rebalance_date: str | None,
+        trading_dates: list[str],
+    ) -> bool:
+        """Dynamically determine if today is a rebalance day based on volatility regime.
+
+        Regimes:
+        - monthly: first trading day of a new month
+        - biweekly: first trading day of a new 2-week period
+        - weekly: first trading day of a new week
+        """
+        regime = get_rebalance_regime(volatility_ratio, self.config)
+        dt = pd.Timestamp(date_str)
+
+        if regime == "monthly":
+            # First trading day of a new month
+            if last_rebalance_date is None:
+                return True
+            return date_str[:7] != last_rebalance_date[:7]
+
+        elif regime == "biweekly":
+            # Every ~10 trading days (2 weeks)
+            if last_rebalance_date is None:
+                return True
+            # Count trading days since last rebalance
+            try:
+                last_idx = trading_dates.index(last_rebalance_date)
+                curr_idx = trading_dates.index(date_str)
+                days_elapsed = curr_idx - last_idx
+                return days_elapsed >= 10
+            except ValueError:
+                return False
+
+        elif regime == "weekly":
+            # First trading day of each week
+            if last_rebalance_date is None:
+                return True
+            last_dt = pd.Timestamp(last_rebalance_date)
+            return dt.isocalendar()[1] != last_dt.isocalendar()[1] or dt.year != last_dt.year
+
+        return False
+
     def _get_current_prices(self, symbols, date: str) -> dict[str, float]:
         """Get closing prices for given symbols on a date."""
         prices = {}
@@ -210,13 +331,21 @@ class BacktestEngine:
                 prices[sym] = df["close"].iloc[-1]
         return prices
 
-    def _check_risk(self, portfolio: Portfolio, date: str) -> list[str]:
+    def _check_risk(
+        self,
+        portfolio: Portfolio,
+        date: str,
+        volatility_ratio: float | None = None,
+    ) -> list[str]:
         """Run risk checks and return symbols that need emergency selling."""
         sell_symbols = []
         holdings = portfolio.get_holdings_dict()
 
-        # Hard stop-loss
-        hard_alerts = check_hard_stop(holdings, self.store, self.config, date)
+        # Hard stop-loss (with adaptive ATR multiple)
+        hard_alerts = check_hard_stop(
+            holdings, self.store, self.config, date,
+            volatility_ratio=volatility_ratio,
+        )
         for alert in hard_alerts:
             if alert.can_sell_today:
                 sell_symbols.append(alert.symbol)
@@ -240,9 +369,18 @@ class BacktestEngine:
         return list(set(sell_symbols))
 
     def _generate_rebalance_orders(
-        self, portfolio: Portfolio, date: str
+        self,
+        portfolio: Portfolio,
+        date: str,
+        position_scale: float = 1.0,
     ) -> list[dict]:
-        """Generate rebalance orders: compute factors, score, allocate."""
+        """Generate rebalance orders: compute factors, score, allocate.
+
+        Args:
+            portfolio: Current portfolio.
+            date: Current date.
+            position_scale: Scale factor for position sizes (0.5 during circuit breaker recovery).
+        """
         try:
             factor_matrix = compute_all_factors(self.config, date=date, store=self.store)
         except Exception as e:
@@ -254,7 +392,7 @@ class BacktestEngine:
 
         # Timing signal
         timing = compute_timing_signal(self.config, date=date, store=self.store)
-        position_ratio = timing["position_ratio"]
+        position_ratio = timing["position_ratio"] * position_scale
 
         # Score and select
         scores = score_stocks(factor_matrix, self.config)

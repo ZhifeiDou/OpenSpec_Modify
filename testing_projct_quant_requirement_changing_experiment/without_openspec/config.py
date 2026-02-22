@@ -82,5 +82,9 @@ BACKTEST = {
 # ── 风控参数 ──
 RISK = {
     "stop_loss": -0.08,         # 个股止损线 -8%
+    "stop_loss_low_vol": -0.06,  # 低波动止损 -6%
+    "stop_loss_high_vol": -0.10, # 高波动止损 -10%
     "max_drawdown_alert": -0.15, # 组合最大回撤预警 -15%
+    "circuit_breaker_l1": -0.03, # 熔断一级 -3%
+    "circuit_breaker_l2": -0.05, # 熔断二级 -5%
 }
