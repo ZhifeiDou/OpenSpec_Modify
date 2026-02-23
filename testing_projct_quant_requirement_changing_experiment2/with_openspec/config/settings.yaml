@@ -1,0 +1,91 @@
+data:
+  primary_source: akshare
+  fallback_sources:
+    - baostock
+    - tushare
+  storage_backend: sqlite
+  db_path: data/quant.db
+  api_delay_seconds: 0.5
+  max_retries: 2
+
+universe:
+  industry_code: "801050"  # Shenwan non-ferrous metals
+  min_listing_days: 60
+  min_daily_turnover: 5000000  # 5M CNY
+  exclude_st: true
+  exclude_suspended: true
+
+  subsector_metal_map:
+    copper: cu
+    aluminum: al
+    gold: au
+    rare_earth: null  # No liquid futures, use sector index
+    lithium: LC
+    cobalt_nickel: ni
+    zinc_lead: zn
+
+factors:
+  weights:
+    commodity: 0.35
+    fundamental: 0.25
+    technical: 0.20
+    flow: 0.15
+    macro: 0.05
+  scoring_mode: equal_weight  # equal_weight or ic_weight
+  ic_lookback_months: 12
+  winsorize_mad_multiple: 3.0
+  small_universe_warning: 10
+
+strategy:
+  max_stocks: 10
+  top_ratio: 0.2  # Select top 20% of universe
+  max_single_weight: 0.10
+  max_subsector_weight: 0.25
+  rebalance_freq: monthly
+  skip_rebalance_threshold: 0.02  # Skip if all weight changes < 2%
+
+timing:
+  enabled: true
+  override_ratio: null  # Set to 0.0-1.0 to override timing signal
+  gold_hedge_threshold: 0.05  # Gold momentum threshold for hedge signal
+
+risk:
+  hard_stop_atr_multiple: 2.0
+  trailing_stop_activation: 0.10  # Activate after 10% gain
+  trailing_stop_drop: 0.08  # Sell after 8% drop from peak
+  max_risk_per_stock: 0.02  # Max 2% portfolio loss per stock
+  max_drawdown_reduce: 0.15  # Reduce to 50% at 15% drawdown
+  max_drawdown_liquidate: 0.20  # Full liquidation at 20% drawdown
+  metal_crash_threshold: 0.03  # Alert when metal drops > 3% daily
+
+  # Volatility-adaptive stop-loss
+  volatility_short_window: 20    # Days for recent volatility
+  volatility_long_window: 120    # Days for historical median
+  atr_multiple_low_vol: 1.5     # ATR multiple in low volatility
+  atr_multiple_normal_vol: 2.0  # ATR multiple in normal volatility
+  atr_multiple_high_vol: 2.5    # ATR multiple in high volatility
+  volatility_low_threshold: 0.8  # Below this = low volatility
+  volatility_high_threshold: 1.5 # Above this = high volatility
+
+  # Circuit breaker
+  circuit_breaker_level1_threshold: 0.03  # 3% daily drop triggers Level 1
+  circuit_breaker_level2_threshold: 0.05  # 5% daily drop triggers Level 2
+  circuit_breaker_level1_recovery_days: 3  # Consecutive up days for L1 recovery
+  circuit_breaker_level2_recovery_days: 5  # Consecutive up days for L2 recovery
+
+  # Dynamic rebalance frequency thresholds
+  volatility_biweekly_threshold: 1.5  # Above this = bi-weekly rebalance
+  volatility_weekly_threshold: 2.0    # Above this = weekly rebalance
+
+backtest:
+  initial_capital: 1000000
+  stamp_tax: 0.0005  # 0.05% sell only
+  commission: 0.0003  # 0.03% both sides
+  min_commission: 5  # Minimum 5 CNY
+  slippage: 0.0015  # 0.15%
+  risk_free_rate: 0.02  # 2% annual
+
+report:
+  format: html  # html or png
+  output_dir: reports
+  chinese_font: null  # Auto-detect or specify font path

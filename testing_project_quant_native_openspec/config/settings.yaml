@@ -1,0 +1,94 @@
+# A股有色金属多因子量化交易系统配置
+
+data:
+  sources:
+    - name: akshare
+      priority: 1
+      delay_seconds: 0.5
+    - name: baostock
+      priority: 2
+      delay_seconds: 0.3
+    - name: tushare
+      priority: 3
+      delay_seconds: 0.5
+      token: ""  # 需要填入tushare token
+  cache:
+    db_path: "data/cache.db"
+    max_age_days: 1
+
+universe:
+  industry_code: "C22"  # CSRC有色金属行业代码
+  min_listing_days: 120
+  min_turnover_threshold: 0.005  # 最低换手率
+  exclude_st: true
+  subsectors:
+    copper: ["铜", "紫金", "江西铜"]
+    aluminum: ["铝", "中铝", "南山铝"]
+    gold: ["黄金", "金矿", "山东黄金", "紫金矿业"]
+    lithium: ["锂", "天齐", "赣锋"]
+    cobalt: ["钴", "华友钴"]
+    zinc: ["锌", "驰宏锌锗"]
+    rare_earth: ["稀土", "北方稀土"]
+
+factors:
+  weights:
+    commodity: 0.35
+    fundamental: 0.25
+    technical: 0.20
+    flow: 0.15
+    macro: 0.05
+  scoring_mode: "equal-weight"  # equal-weight | ic-weighted
+  ic_lookback_months: 12
+  params:
+    momentum_window: 60
+    momentum_skip: 5
+    mean_reversion_window: 5
+    turnover_window: 20
+    volatility_window: 20
+    pb_percentile_years: 3
+    northbound_window: 10
+    financing_window: 5
+    metal_momentum_window: 60
+
+strategy:
+  top_percent: 0.20
+  max_stocks: 10
+  single_stock_max_weight: 0.10
+  subsector_max_weight: 0.25
+
+risk:
+  hard_stop_loss:
+    atr_period: 14
+    atr_multiplier: 2.0
+  trailing_stop:
+    activation_gain: 0.10
+    peak_drawdown_trigger: 0.08
+  portfolio_drawdown:
+    level1_threshold: 0.15
+    level1_action: "reduce_50"
+    level2_threshold: 0.20
+    level2_action: "liquidate"
+  position_sizing:
+    max_loss_per_stock: 0.02
+  metal_crash_alert:
+    daily_drop_threshold: 0.03
+
+backtest:
+  initial_capital: 1000000
+  rebalance_frequency: "monthly"  # monthly | biweekly | weekly
+  costs:
+    stamp_tax: 0.0005
+    commission: 0.0003
+    commission_min: 5.0
+    slippage: 0.0015
+  price_limit: 0.10  # 10% 涨跌停
+
+timing:
+  enabled: true
+  gold_hedge:
+    momentum_window: 20
+    threshold: 0.05
+    reduction_factor: 0.70
+  pmi:
+    expansion_threshold: 50
+    bearish_reduction_factor: 0.70

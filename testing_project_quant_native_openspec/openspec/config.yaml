@@ -1,0 +1,13 @@
+schema: native-openspec
+
+context: |
+  Project: A股有色金属多因子量化交易系统
+  Tech stack: Python 3.10+, pandas, numpy, akshare, plotly
+  Domain: Quantitative trading for Chinese A-share non-ferrous metals sector
+  Key constraints:
+    - T+1 trading rules (cannot sell on buy day)
+    - 10% daily price limit (涨跌停)
+    - Stamp tax 0.05% (sell only), commission 0.03% (both sides)
+    - Data sources: AKShare (primary), BaoStock, Tushare (backup)
+  Architecture: Modular Python package with CLI interface
+  Testing: pytest
