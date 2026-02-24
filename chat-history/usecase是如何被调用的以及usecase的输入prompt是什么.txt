@@ -1,0 +1,448 @@
+
+╭─── Claude Code v2.1.50 ──────────────────────────────────────────────────────╮
+│                                 │ Tips for getting started                   │
+│       Welcome back Zhifei!      │ Run /init to create a CLAUDE.md file with… │
+│                                 │ ────────────────────────────────────────── │
+│             ▐▛███▜▌             │ Recent activity                            │
+│            ▝▜█████▛▘            │ No recent activity                         │
+│              ▘▘ ▝▝              │                                            │
+│                                 │                                            │
+│      Opus 4.6 · Claude Max      │                                            │
+│   ~\Desktop\Openspec_modified   │                                            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+❯ C:\Users\Zhifei Dou\Desktop\Openspec_modified\OpenSpec-main\schemas\spec- 
+  driven\templates\usecases.md                                              
+  这份md在这个项目中是被哪里调用了？调用链是什么？                          
+
+● Searched for 2 patterns, read 2 files (ctrl+o to expand)
+
+● Now let me trace how the schema loads and resolves the template.
+
+● Searched for 2 patterns, read 1 file (ctrl+o to expand)
+
+● Now I have a clear picture. Let me also check the use-cases.ts workflow
+  template.
+
+● Read 2 files (ctrl+o to expand)
+
+● 现在我有了完整的调用链。以下是 usecases.md 模板文件的调用链：
+
+  调用链
+
+  schemas/spec-driven/schema.yaml          (1) 定义 artifact，声明 template:
+  usecases.md
+          │
+          ▼
+  src/core/artifact-graph/schema.ts        (2) loadSchema() / parseSchema() 解析
+   schema.yaml
+          │
+          ▼
+  src/core/artifact-graph/resolver.ts      (3) resolveSchema() 按优先级查找
+  schema 目录
+          │                                     (项目本地 → 用户覆盖 → 包内置)
+          ▼
+  src/core/artifact-graph/graph.ts         (4) ArtifactGraph.fromSchema()
+  构建依赖图
+          │
+          ▼
+  src/core/artifact-graph/instruction-loader.ts  (5) generateInstructions() →
+  loadTemplate()
+          │                                           读取
+  schemas/<name>/templates/usecases.md
+          ▼
+  src/commands/workflow/instructions.ts    (6) CLI 的 `openspec instructions
+  usecases` 命令
+                                                调用
+  generateInstructions()，返回模板内容
+          │
+          ▼
+  skill templates (运行时 AI 工作流)        (7) continue-change / ff-change 等
+  skill
+                                                调用 CLI 获取
+  instructions，使用模板生成 artifact
+
+  具体说明
+
+  1. schema.yaml:30-33 — usecases artifact 声明了 template: 
+  usecases.md，表示这个 artifact 使用 usecases.md 作为模板
+  2. instruction-loader.ts:140 — loadTemplate() 函数根据 schema 名称拼接路径：
+  path.join(schemaDir, 'templates', templatePath)
+  → schemas/spec-driven/templates/usecases.md
+  3. instruction-loader.ts:221 — generateInstructions() 调用
+  loadTemplate()，将模板内容放入 ArtifactInstructions.template 字段返回给调用方
+  4. CLI 命令层 — 当用户执行 openspec instructions usecases --change "<name>"
+  时，instructions 命令调用 generateInstructions()，将模板内容作为 JSON 输出
+  5. Skill 工作流层 — continue-change.ts、use-cases.ts 等 skill 模板指导 AI
+  agent 调用 CLI 获取 instructions，然后按照 usecases.md 的模板结构来生成实际的
+  use cases 文件
+
+  此外，schema.ts (schema validate 命令) 的 line 205-208
+  也会检查模板文件是否存在：
+  const templatePathInTemplates = path.join(schemaDir, 'templates',
+  artifact.template);
+
+  简而言之：usecases.md 是一个模板文件，通过 schema.yaml 声明 → schema 解析 →
+  instruction-loader 加载 → CLI/AI workflow 使用，最终指导 AI
+  按照这个模板结构生成实际的 use case 文档。
+
+✻ Baked for 43s
+
+❯ 那假设现在我proposal已经生成了，我现在需要生成usecase了，这时候我输入/ops 
+  x:conitnue什么文件被触发了来生成usecase？                                 
+  ⎿  ⧉ Selected 1 lines from OpenSpec-main\src\commands\workflow\instructions.ts
+      in Visual Studio Code
+
+● Let我先看一下 instructions.ts 命令的实现。
+
+● Read 1 file (ctrl+o to expand)
+
+● 完整流程如下：
+
+  /opsx:continue 生成 usecase 的执行链
+
+  用户输入 /opsx:continue
+          │
+          ▼
+  ┌─────────────────────────────────────────────────────┐
+  │ src/core/templates/workflows/continue-change.ts     │  ← Skill 模板被加载
+  │ getOpsxContinueCommandTemplate()                    │     (纯文本指令，指导
+  AI 执行下面的步骤)
+  └─────────────────────────────────────────────────────┘
+          │
+          │  AI 按照 skill 指令执行 Step 2:
+          ▼
+  ┌─────────────────────────────────────────────────────┐
+  │ $ openspec status --change "<name>" --json          │  ← AI 调用 CLI
+  │                                                     │
+  │ instruction-loader.ts → loadChangeContext()          │
+  │   → resolver.ts → resolveSchema("spec-driven")      │
+  │   → schema.ts → parseSchema(schema.yaml)             │
+  │   → graph.ts → ArtifactGraph.fromSchema()            │
+  │   → state.ts → detectCompleted() → proposal ✅       │
+  │                                                     │
+  │ 返回: usecases 状态 = "ready"                        │
+  └─────────────────────────────────────────────────────┘
+          │
+          │  AI 看到 usecases 是第一个 "ready" 的 artifact，执行 Step 3:
+          ▼
+  ┌─────────────────────────────────────────────────────┐
+  │ $ openspec instructions usecases --change "<name>"  │  ← AI 调用 CLI
+  │   --json                                            │
+  │                                                     │
+  │ instructions.ts:44 → instructionsCommand()           │
+  │   → instruction-loader.ts:60 → loadChangeContext()   │
+  │   → instruction-loader.ts:80 → generateInstructions()│
+  │       │                                             │
+  │       ├→ loadTemplate("spec-driven", "usecases.md") │
+  │       │   读取 schemas/spec-driven/templates/        │
+  │       │        usecases.md ← 你问的这个文件!         │
+  │       │                                             │
+  │       ├→ 从 schema.yaml:34-61 取 instruction 字段   │
+  │       │   (Cockburn 方法论的指导说明)                 │
+  │       │                                             │
+  │       └→ 返回 ArtifactInstructions JSON:             │
+  │           {                                         │
+  │             template: "<usecases.md 模板内容>",      │
+  │             instruction: "<schema 中的写作指导>",     │
+  │             outputPath: "usecases.md",               │
+  │             dependencies: [{id:"proposal", done:true}]│
+  │             unlocks: ["specs"]                       │
+  │           }                                         │
+  └─────────────────────────────────────────────────────┘
+          │
+          │  AI 拿到 instructions 后:
+          ▼
+  ┌─────────────────────────────────────────────────────┐
+  │ AI Agent 执行:                                       │
+  │  1. 读取 proposal.md (dependency)                    │
+  │  2. 按 template 结构 + instruction 指导撰写内容       │
+  │  3. Write → openspec/changes/<name>/usecases.md      │
+  └─────────────────────────────────────────────────────┘
+          │
+          │  AI 执行 Step 4:
+          ▼
+  ┌─────────────────────────────────────────────────────┐
+  │ $ openspec status --change "<name>"                  │
+  │                                                     │
+  │ 显示: usecases ✅ done, specs → ready                │
+  └─────────────────────────────────────────────────────┘
+
+  关键文件触发顺序
+
+  顺序: 1
+  文件: src/core/templates/workflows/continue-change.ts
+  作用: Skill 模板，指导 AI 该做什么
+  ────────────────────────────────────────
+  顺序: 2
+  文件: src/core/artifact-graph/resolver.ts
+  作用: 找到 schemas/spec-driven/ 目录
+  ────────────────────────────────────────
+  顺序: 3
+  文件: src/core/artifact-graph/schema.ts
+  作用: 解析 schema.yaml，得到 artifact 定义
+  ────────────────────────────────────────
+  顺序: 4
+  文件: src/core/artifact-graph/graph.ts
+  作用: 构建依赖图，判断 usecases 是 "ready"
+  ────────────────────────────────────────
+  顺序: 5
+  文件: src/commands/workflow/instructions.ts:80
+  作用: CLI 入口，调用 generateInstructions()
+  ────────────────────────────────────────
+  顺序: 6
+  文件: src/core/artifact-graph/instruction-loader.ts:221
+  作用: 调用 loadTemplate()
+  ────────────────────────────────────────
+  顺序: 7
+  文件: schemas/spec-driven/templates/usecases.md
+  作用: 被读取，内容作为 template 字段返回
+
+  核心要点：usecases.md 模板文件本身不是被代码"执行"的，而是被 loadTemplate()
+  读取为纯文本，然后作为 JSON 的 template 字段返回给 AI agent。AI agent
+  根据这个模板结构 + schema.yaml 中的 instruction 指导来撰写实际的 usecases
+  文档。
+
+✻ Churned for 37s
+
+❯ 所以我在执行opsx：continue生成usecase的时候，输入到LLM的内容，或者说上下  
+  文，都有什么？                                                            
+
+● 好问题，让我把输入到 LLM 的所有上下文完整梳理出来。先确认一下是否有 project
+  config 文件。
+
+● Searched for 2 patterns, read 1 file (ctrl+o to expand)
+
+● 现在我有了全貌。以下是完整的 LLM 输入内容分层：
+
+  LLM 接收到的全部上下文
+
+  第 1 层：Skill 模板本身（系统级指令）
+
+  来源：src/core/templates/workflows/continue-change.ts:132-238
+
+  这是 /opsx:continue 被触发时首先注入的内容，告诉 LLM 该怎么做：
+
+  Continue working on a change by creating the next artifact.
+
+  **Steps**
+  1. If no change name provided, prompt for selection
+     Run `openspec list --json` ...
+  2. Check current status
+     `openspec status --change "<name>" --json`
+  3. Act based on status ...
+     Pick the FIRST artifact with status: "ready"
+     Get its instructions: `openspec instructions <artifact-id> --change
+  "<name>" --json`
+  4. After creating an artifact, show progress
+
+  **Artifact Creation Guidelines** ...
+  **Guardrails** ...
+
+  这段文本是纯指令，LLM 按照它一步步执行。
+
+  ---
+  第 2 层：openspec status 的 JSON 输出
+
+  LLM 执行 openspec status --change "<name>" --json 后拿到：
+
+  {
+    "changeName": "xxx",
+    "schemaName": "spec-driven",
+    "isComplete": false,
+    "artifacts": [
+      { "id": "proposal",  "outputPath": "proposal.md",      "status": "done"
+   },
+      { "id": "usecases",  "outputPath": "usecases.md",      "status": "ready"
+   },
+      { "id": "specs",     "outputPath": "specs/**/*.md",     "status":
+  "blocked" },
+      { "id": "design",    "outputPath": "design.md",         "status":
+  "blocked" },
+      { "id": "tasks",     "outputPath": "tasks.md",          "status":
+  "blocked" }
+    ]
+  }
+
+  LLM 从中判断：usecases 是第一个 "ready" 的 artifact。
+
+  ---
+  第 3 层：openspec instructions usecases 的 JSON 输出
+
+  LLM 执行 openspec instructions usecases --change "<name>" --json 后拿到的 JSON
+   包含 6 个关键字段：
+
+  字段: instruction
+  来源: schema.yaml:34-61
+  内容: Cockburn 方法论的写作指导（如何写 use case、层级划分等）
+  ────────────────────────────────────────
+  字段: template
+  来源: schemas/spec-driven/templates/usecases.md
+  内容: 模板结构（Primary Actor, Scope, Main Success Scenario 等）
+  ────────────────────────────────────────
+  字段: description
+  来源: schema.yaml:32
+  内容: "Use cases capturing actor goals, scenarios, and extensions"
+  ────────────────────────────────────────
+  字段: outputPath
+  来源: schema.yaml:31
+  内容: "usecases.md" — 写到哪里
+  ────────────────────────────────────────
+  字段: dependencies
+  来源: 依赖图计算
+  内容: [{id: "proposal", done: true, path: "proposal.md"}]
+  ────────────────────────────────────────
+  字段: unlocks
+  来源: 依赖图计算
+  内容: ["specs"] — 完成后解锁什么
+  ────────────────────────────────────────
+  字段: context
+  来源: openspec/config.yaml（如有）
+  内容: 项目背景信息（可选）
+  ────────────────────────────────────────
+  字段: rules
+  来源: openspec/config.yaml（如有）
+  内容: 针对 usecases artifact 的额外规则（可选）
+
+  其中 instruction 的具体内容是 schema.yaml 里的：
+  Create use cases based on the proposal, following Cockburn's methodology.
+
+  For each capability or user-facing goal identified in the proposal,
+  write a use case that captures:
+  - WHO interacts with the system (primary actor)
+  - WHAT they want to achieve (goal)
+  - HOW the interaction unfolds (main success scenario, 3-9 steps)
+  - WHAT can go wrong (extensions/alternate flows)
+
+  Guidelines (from "Writing Effective Use Cases"):
+  - Title should be an active-verb goal phrase ...
+  - Each step shows a goal succeeding ...
+  - Use simple grammar: "Actor does X. System responds with Y."
+  ...
+
+  template 的具体内容是 usecases.md 文件：
+  ## Use Cases
+  ### Use Case: <!-- title -->
+  **Primary Actor:** ...
+  **Main Success Scenario:**
+  1. ...
+  **Extensions:**
+  - 2a. ...
+
+  ---
+  第 4 层：依赖文件的实际内容
+
+  LLM 根据 dependencies 字段得知需要读取 proposal.md，然后主动调用 Read 
+  工具读取：
+
+  openspec/changes/<name>/proposal.md  ← 之前生成的 proposal 内容
+
+  ---
+  第 5 层（可选）：项目配置注入
+
+  如果项目根目录存在 openspec/config.yaml，generateInstructions() 会读取并注入：
+
+  - context — 项目背景（如 "这是一个 Node.js CLI 工具，使用 TypeScript..."）
+  - rules.usecases — 针对 usecases 的额外规则（如 "必须包含错误处理场景"）
+
+  当前项目没有这个配置文件，所以这两个字段为 undefined。
+
+  ---
+  总结：信息流全景
+
+  ┌─────────────────────────────────────────────────────────┐
+  │                   LLM 的完整上下文                        │
+  │                                                         │
+  │  ① Skill 模板指令 (continue-change.ts)                   │
+  │     "按步骤执行: status → instructions → 创建文件"        │
+  │                                                         │
+  │  ② Status JSON                                          │
+  │     "usecases 是 ready 状态"                             │
+  │                                                         │
+  │  ③ Instructions JSON                                    │
+  │     ├─ instruction:  怎么写 (Cockburn 方法论)   ← schema.yaml
+  │     ├─ template:     结构模板                   ← templates/usecases.md
+  │     ├─ context:      项目背景 (可选)            ← config.yaml
+  │     ├─ rules:        额外约束 (可选)            ← config.yaml
+  │     ├─ outputPath:   写到哪                     ← schema.yaml
+  │     └─ dependencies: 需要读什么                  ← 依赖图
+  │                                                         │
+  │  ④ proposal.md 实际内容                                  │
+  │     LLM 读取后理解 "要做什么"                             │
+  │                                                         │
+  │  ⑤ 对话历史                                              │
+  │     用户之前的消息、选择的 change 名称等                    │
+  │                                                         │
+  │              ↓↓↓ LLM 综合以上信息 ↓↓↓                    │
+  │                                                         │
+  │         输出: openspec/changes/<name>/usecases.md        │
+  └─────────────────────────────────────────────────────────┘
+
+  所以 LLM 写 usecase 时，核心输入是 instruction（怎么写）+ template（结构）+ 
+  proposal.md（写什么） 这三者的组合。
+
+✻ Crunched for 56s
+
+❯ LLM 执行 openspec instructions usecases --change                          
+    "<name>" --json 后拿到的 JSON 包含 6 个关键字段：                       
+  这我就不懂了，为什么LLM还能执行东西？                                     
+
+● 这是个很好的问题。这里的关键是理解 /opsx:continue 的工作机制：
+
+  Skill 模板不是代码，是"给 LLM 的指令"
+
+  continue-change.ts 里的内容本质上是一段纯文本提示词，被注入到 LLM
+  的上下文中。它告诉 LLM：
+
+  "你现在要做以下步骤：
+  1. 运行 openspec status --change "<name>" --json
+  2. 运行 openspec instructions usecases --change "<name>" --json
+  3. 读取依赖文件
+  4. 写文件"
+
+  LLM 通过工具调用来"执行"
+
+  LLM 本身当然不能直接执行命令。但像 Claude Code 这样的 agent 环境提供了 Bash 
+  工具。流程是：
+
+  Skill 模板文本注入 LLM 上下文
+          │
+          ▼
+  LLM 读到 "运行 openspec status --change ..."
+          │
+          ▼
+  LLM 生成一个 Bash 工具调用请求:
+     { tool: "Bash", command: "openspec status --change 'xxx' --json" }
+          │
+          ▼
+  Claude Code 框架执行这个命令，把 stdout 返回给 LLM
+          │
+          ▼
+  LLM 读到 JSON 输出，理解 usecases 是 "ready"
+          │
+          ▼
+  LLM 再生成一个 Bash 工具调用:
+     { tool: "Bash", command: "openspec instructions usecases --change 'xxx'
+  --json" }
+          │
+          ▼
+  框架执行，返回 JSON（包含 template、instruction 等）
+          │
+          ▼
+  LLM 再生成一个 Read 工具调用读取 proposal.md
+          │
+          ▼
+  LLM 综合所有信息，生成 Write 工具调用写出 usecases.md
+
+  本质
+
+  所谓"LLM 执行命令"，实际上是：
+
+  1. LLM 看到提示词说"请运行这个命令"
+  2. LLM 输出一个工具调用请求（JSON 格式）
+  3. Claude Code 框架拦截这个请求，真正执行命令
+  4. 框架把结果返回给 LLM 作为下一轮输入
+
+  LLM 自己什么都没"执行"。它只是在做文本生成 —
+  生成的文本恰好是工具调用请求，由外部框架代为执行。这就是 Agent 的核心模式：LLM
+   决策 + 工具执行 + 结果反馈 → 循环。

@@ -1,0 +1,48 @@
+## MODIFIED Requirements
+
+### Requirement: Slash Command Updates
+The update command SHALL refresh existing slash command files for configured tools without creating new ones.
+
+#### Scenario: Updating slash commands for Claude Code
+- **WHEN** `.claude/commands/openspec-hw2/` contains `proposal.md`, `apply.md`, and `archive.md`
+- **THEN** refresh each file using shared templates
+- **AND** ensure templates include instructions for the relevant workflow stage
+
+#### Scenario: Updating slash commands for Cursor
+- **WHEN** `.cursor/commands/` contains `openspec-hw2-proposal.md`, `openspec-hw2-apply.md`, and `openspec-hw2-archive.md`
+- **THEN** refresh each file using shared templates
+- **AND** ensure templates include instructions for the relevant workflow stage
+
+#### Scenario: Updating slash commands for OpenCode
+- **WHEN** `.opencode/command/` contains `openspec-hw2-proposal.md`, `openspec-hw2-apply.md`, and `openspec-hw2-archive.md`
+- **THEN** refresh each file using shared templates
+- **AND** ensure templates include instructions for the relevant workflow stage
+
+#### Scenario: Updating slash commands for Windsurf
+- **WHEN** `.windsurf/workflows/` contains `openspec-hw2-proposal.md`, `openspec-hw2-apply.md`, and `openspec-hw2-archive.md`
+- **THEN** refresh each file using shared templates wrapped in OpenSpec-HW2 markers
+- **AND** ensure templates include instructions for the relevant workflow stage
+- **AND** skip creating missing files (the update command only refreshes what already exists)
+
+#### Scenario: Updating slash commands for Kilo Code
+- **WHEN** `.kilocode/workflows/` contains `openspec-hw2-proposal.md`, `openspec-hw2-apply.md`, and `openspec-hw2-archive.md`
+- **THEN** refresh each file using shared templates wrapped in OpenSpec-HW2 markers
+- **AND** ensure templates include instructions for the relevant workflow stage
+- **AND** skip creating missing files (the update command only refreshes what already exists)
+
+#### Scenario: Updating slash commands for Codex
+- **GIVEN** the global Codex prompt directory contains `openspec-hw2-proposal.md`, `openspec-hw2-apply.md`, and `openspec-hw2-archive.md`
+- **WHEN** a user runs `openspec-hw2 update`
+- **THEN** refresh each file using the shared slash-command templates (including placeholder guidance)
+- **AND** preserve any unmanaged content outside the OpenSpec-HW2 marker block
+- **AND** skip creation when a Codex prompt file is missing
+
+#### Scenario: Updating slash commands for GitHub Copilot
+- **WHEN** `.github/prompts/` contains `openspec-hw2-proposal.prompt.md`, `openspec-hw2-apply.prompt.md`, and `openspec-hw2-archive.prompt.md`
+- **THEN** refresh each file using shared templates while preserving the YAML frontmatter
+- **AND** update only the OpenSpec-HW2-managed block between markers
+- **AND** ensure templates include instructions for the relevant workflow stage
+
+#### Scenario: Missing slash command file
+- **WHEN** a tool lacks a slash command file
+- **THEN** do not create a new file during update
