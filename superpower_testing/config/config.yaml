@@ -1,0 +1,33 @@
+stock_pool:
+  sector: "有色金属"
+
+factors:
+  momentum:
+    weight: 0.3
+    lookback: 20
+  value:
+    weight: 0.3
+  volatility:
+    weight: 0.2
+  quality:
+    weight: 0.2
+
+strategy:
+  top_n: 5
+  rebalance: "daily"
+
+backtest:
+  start_date: "2023-01-01"
+  end_date: "2025-12-31"
+  initial_capital: 1000000
+  commission: 0.001
+  slippage: 0.002
+
+risk:
+  max_position_pct: 0.3
+  stop_loss_pct: 0.08
+  take_profit_pct: 0.20
+
+paths:
+  data_cache: "data_cache"
+  output: "output"
