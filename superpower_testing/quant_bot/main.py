@@ -188,10 +188,13 @@ def run_signal(config):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="A股有色金属多因子量化交易机器人")
+    import io, sys
+    if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    parser = argparse.ArgumentParser(description="A-share Non-ferrous Metals Quant Bot")
     parser.add_argument("--mode", choices=["backtest", "simulate", "signal"],
-                        default="signal", help="运行模式")
-    parser.add_argument("--config", default=None, help="配置文件路径")
+                        default="signal", help="Run mode: backtest/simulate/signal")
+    parser.add_argument("--config", default=None, help="Config file path")
     args = parser.parse_args()
 
     setup_logging()
