@@ -1,8 +1,26 @@
 import logging
+import time
 import akshare as ak
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+MAX_RETRIES = 3
+RETRY_DELAY = 5  # seconds
+
+
+def _retry(func, *args, **kwargs):
+    """Retry a function call with exponential backoff."""
+    for attempt in range(MAX_RETRIES):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            if attempt < MAX_RETRIES - 1:
+                wait = RETRY_DELAY * (attempt + 1)
+                logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                raise
 
 
 class DataFetcher:
@@ -11,7 +29,7 @@ class DataFetcher:
     def get_sector_stocks(self, sector_name="有色金属"):
         """Get stock list for a sector (板块成分股)."""
         try:
-            df = ak.stock_board_industry_cons_em(symbol=sector_name)
+            df = _retry(ak.stock_board_industry_cons_em, symbol=sector_name)
             result = df[["代码", "名称"]].copy()
             result.columns = ["code", "name"]
             logger.info(f"Fetched {len(result)} stocks for sector: {sector_name}")
@@ -23,7 +41,8 @@ class DataFetcher:
     def get_stock_daily(self, stock_code, start_date, end_date):
         """Get daily kline data for a stock."""
         try:
-            df = ak.stock_zh_a_hist(
+            df = _retry(
+                ak.stock_zh_a_hist,
                 symbol=stock_code,
                 period="daily",
                 start_date=start_date,
@@ -53,7 +72,7 @@ class DataFetcher:
     def get_stock_valuation(self, stock_code):
         """Get valuation indicators (PE, PB, etc.) for a stock."""
         try:
-            df = ak.stock_a_indicator_lg(symbol=stock_code)
+            df = _retry(ak.stock_a_indicator_lg, symbol=stock_code)
             df = df.rename(columns={
                 "trade_date": "date",
                 "pe": "pe",
