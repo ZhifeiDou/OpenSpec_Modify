@@ -5,3 +5,11 @@ dist/
 .claude/
 *.db
 ~$*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+data_cache/
