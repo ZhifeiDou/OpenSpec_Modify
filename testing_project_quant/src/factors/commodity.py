@@ -1,5 +1,7 @@
-"""Commodity factors: metal price momentum, futures basis, inventory change."""
+"""Commodity factors: metal price momentum, futures basis, inventory change, gold cross-metal ratios."""
 from __future__ import annotations
+
+import logging
 
 import numpy as np
 import pandas as pd
@@ -7,6 +9,8 @@ import pandas as pd
 from src.data.storage import DataStore
 from src.universe.classifier import SUBSECTOR_METAL_MAP
 from src.factors.base import BaseFactor, register_factor
+
+logger = logging.getLogger(__name__)
 
 
 def _get_stock_metal(symbol: str, config: dict, store: DataStore) -> str | None:
@@ -105,5 +109,85 @@ class InventoryWeeklyChangeFactor(BaseFactor):
         for symbol in universe:
             metal = _get_stock_metal(symbol, config, store)
             results[symbol] = metal_inv_change.get(metal, np.nan) if metal else np.nan
+
+        return pd.Series(results)
+
+
+@register_factor
+class GoldSilverRatioFactor(BaseFactor):
+    name = "gold_silver_ratio"
+    category = "commodity"
+
+    def compute(self, universe, date, store, config):
+        """Gold-silver ratio deviation from rolling mean. Only applies to gold-subsector stocks."""
+        gcm_cfg = config.get("factors", {}).get("gold_cross_metal", {})
+        lookback = gcm_cfg.get("gsr_lookback", 60)
+
+        au_df = store.read_futures_daily("au", end_date=date)
+        ag_df = store.read_futures_daily("ag", end_date=date)
+
+        value = np.nan
+        if len(au_df) >= lookback + 1 and len(ag_df) >= lookback + 1:
+            au_close = au_df["close"].values[-(lookback + 1):]
+            ag_close = ag_df["close"].values[-(lookback + 1):]
+            # Align lengths
+            n = min(len(au_close), len(ag_close))
+            au_close = au_close[-n:]
+            ag_close = ag_close[-n:]
+            # Compute ratio series
+            with np.errstate(divide="ignore", invalid="ignore"):
+                ratios = au_close / ag_close
+            ratios = ratios[np.isfinite(ratios)]
+            if len(ratios) >= lookback + 1:
+                rolling_mean = ratios[:-1].mean()
+                current_ratio = ratios[-1]
+                if rolling_mean > 0:
+                    value = (current_ratio - rolling_mean) / rolling_mean
+        else:
+            logger.warning(
+                "Insufficient futures data for gold-silver ratio (au: %d, ag: %d, need: %d)",
+                len(au_df), len(ag_df), lookback + 1,
+            )
+
+        results = {}
+        for symbol in universe:
+            metal = _get_stock_metal(symbol, config, store)
+            results[symbol] = value if metal == "au" else np.nan
+
+        return pd.Series(results)
+
+
+@register_factor
+class GoldCopperRatioFactor(BaseFactor):
+    name = "gold_copper_ratio"
+    category = "commodity"
+
+    def compute(self, universe, date, store, config):
+        """Gold-copper ratio rate-of-change. Only applies to gold-subsector stocks."""
+        gcm_cfg = config.get("factors", {}).get("gold_cross_metal", {})
+        lookback = gcm_cfg.get("gcr_lookback", 20)
+
+        au_df = store.read_futures_daily("au", end_date=date)
+        cu_df = store.read_futures_daily("cu", end_date=date)
+
+        value = np.nan
+        if len(au_df) >= lookback + 1 and len(cu_df) >= lookback + 1:
+            au_close = au_df["close"].values
+            cu_close = cu_df["close"].values
+            with np.errstate(divide="ignore", invalid="ignore"):
+                ratio_today = au_close[-1] / cu_close[-1]
+                ratio_past = au_close[-(lookback + 1)] / cu_close[-(lookback + 1)]
+            if np.isfinite(ratio_today) and np.isfinite(ratio_past) and ratio_past > 0:
+                value = (ratio_today - ratio_past) / ratio_past
+        else:
+            logger.warning(
+                "Insufficient futures data for gold-copper ratio (au: %d, cu: %d, need: %d)",
+                len(au_df), len(cu_df), lookback + 1,
+            )
+
+        results = {}
+        for symbol in universe:
+            metal = _get_stock_metal(symbol, config, store)
+            results[symbol] = value if metal == "au" else np.nan
 
         return pd.Series(results)

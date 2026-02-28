@@ -24,13 +24,36 @@ universe:
     cobalt_nickel: ni
     zinc_lead: zn
 
+news:
+  keywords:
+    - "有色金属"
+  lookback_hours: 24
+  max_articles: 50
+
+llm:
+  provider: openai          # openai or anthropic
+  model: gpt-4o-mini
+  api_key_env: OPENAI_API_KEY
+  batch_size: 10
+  max_retries: 2
+  temperature: 0.1
+
+sentiment:
+  lookback_hours: 72        # Time window for sentiment aggregation
+  half_life_hours: 24       # Exponential decay half-life
+  min_news_count: 1         # Min news count for non-zero sentiment
+
 factors:
   weights:
-    commodity: 0.35
-    fundamental: 0.25
-    technical: 0.20
-    flow: 0.15
-    macro: 0.05
+    commodity: 0.30
+    fundamental: 0.22
+    technical: 0.18
+    flow: 0.13
+    macro: 0.07
+    sentiment: 0.10
+  gold_cross_metal:
+    gsr_lookback: 60   # Gold-silver ratio rolling mean window (trading days)
+    gcr_lookback: 20   # Gold-copper ratio rate-of-change window (trading days)
   scoring_mode: equal_weight  # equal_weight or ic_weight
   ic_lookback_months: 12
   winsorize_mad_multiple: 3.0

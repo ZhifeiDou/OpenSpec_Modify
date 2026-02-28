@@ -102,6 +102,7 @@ class AKShareSource:
         metal_names = {
             "cu": "铜", "al": "铝", "zn": "锌",
             "ni": "镍", "sn": "锡", "pb": "铅",
+            "au": "黄金", "ag": "白银",
         }
         name = metal_names.get(metal, metal)
         try:

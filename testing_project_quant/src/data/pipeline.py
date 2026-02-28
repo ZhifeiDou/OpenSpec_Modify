@@ -26,7 +26,7 @@ class DataPipeline:
             max_retries=data_cfg.get("max_retries", 2),
         )
         self.fallback = BaoStockSource()
-        self._metals = ["cu", "al", "zn", "ni", "sn", "pb", "au"]
+        self._metals = ["cu", "al", "zn", "ni", "sn", "pb", "au", "ag"]
 
     def run(
         self,
