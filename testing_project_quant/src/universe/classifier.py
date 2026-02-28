@@ -20,6 +20,7 @@ _SUBSECTOR_KEYWORDS = {
     "lithium": ["锂", "lithium", "碳酸锂"],
     "cobalt_nickel": ["钴", "镍", "cobalt", "nickel"],
     "zinc_lead": ["锌", "铅", "zinc", "lead"],
+    "silver": ["白银", "silver", "银矿"],
 }
 
 # Sub-sector to futures metal symbol mapping
@@ -31,6 +32,7 @@ SUBSECTOR_METAL_MAP = {
     "lithium": "LC",
     "cobalt_nickel": "ni",
     "zinc_lead": "zn",
+    "silver": "ag",
 }
 
 

@@ -54,6 +54,9 @@ factors:
   gold_cross_metal:
     gsr_lookback: 60   # Gold-silver ratio rolling mean window (trading days)
     gcr_lookback: 20   # Gold-copper ratio rate-of-change window (trading days)
+  silver_cross_metal:
+    sgr_lookback: 60   # Silver-gold ratio rolling mean window (trading days)
+    scr_lookback: 20   # Silver-copper ratio rate-of-change window (trading days)
   scoring_mode: equal_weight  # equal_weight or ic_weight
   ic_lookback_months: 12
   winsorize_mad_multiple: 3.0

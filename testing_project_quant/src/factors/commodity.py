@@ -1,4 +1,4 @@
-"""Commodity factors: metal price momentum, futures basis, inventory change, gold cross-metal ratios."""
+"""Commodity factors: metal price momentum, futures basis, inventory change, gold and silver cross-metal ratios."""
 from __future__ import annotations
 
 import logging
@@ -189,5 +189,85 @@ class GoldCopperRatioFactor(BaseFactor):
         for symbol in universe:
             metal = _get_stock_metal(symbol, config, store)
             results[symbol] = value if metal == "au" else np.nan
+
+        return pd.Series(results)
+
+
+@register_factor
+class SilverGoldRatioFactor(BaseFactor):
+    name = "silver_gold_ratio"
+    category = "commodity"
+
+    def compute(self, universe, date, store, config):
+        """Silver-gold ratio deviation from rolling mean. Only applies to silver-subsector stocks."""
+        scm_cfg = config.get("factors", {}).get("silver_cross_metal", {})
+        lookback = scm_cfg.get("sgr_lookback", 60)
+
+        ag_df = store.read_futures_daily("ag", end_date=date)
+        au_df = store.read_futures_daily("au", end_date=date)
+
+        value = np.nan
+        if len(ag_df) >= lookback + 1 and len(au_df) >= lookback + 1:
+            ag_close = ag_df["close"].values[-(lookback + 1):]
+            au_close = au_df["close"].values[-(lookback + 1):]
+            # Align lengths
+            n = min(len(ag_close), len(au_close))
+            ag_close = ag_close[-n:]
+            au_close = au_close[-n:]
+            # Compute ratio series
+            with np.errstate(divide="ignore", invalid="ignore"):
+                ratios = ag_close / au_close
+            ratios = ratios[np.isfinite(ratios)]
+            if len(ratios) >= lookback + 1:
+                rolling_mean = ratios[:-1].mean()
+                current_ratio = ratios[-1]
+                if rolling_mean > 0:
+                    value = (current_ratio - rolling_mean) / rolling_mean
+        else:
+            logger.warning(
+                "Insufficient futures data for silver-gold ratio (ag: %d, au: %d, need: %d)",
+                len(ag_df), len(au_df), lookback + 1,
+            )
+
+        results = {}
+        for symbol in universe:
+            metal = _get_stock_metal(symbol, config, store)
+            results[symbol] = value if metal == "ag" else np.nan
+
+        return pd.Series(results)
+
+
+@register_factor
+class SilverCopperRatioFactor(BaseFactor):
+    name = "silver_copper_ratio"
+    category = "commodity"
+
+    def compute(self, universe, date, store, config):
+        """Silver-copper ratio rate-of-change. Only applies to silver-subsector stocks."""
+        scm_cfg = config.get("factors", {}).get("silver_cross_metal", {})
+        lookback = scm_cfg.get("scr_lookback", 20)
+
+        ag_df = store.read_futures_daily("ag", end_date=date)
+        cu_df = store.read_futures_daily("cu", end_date=date)
+
+        value = np.nan
+        if len(ag_df) >= lookback + 1 and len(cu_df) >= lookback + 1:
+            ag_close = ag_df["close"].values
+            cu_close = cu_df["close"].values
+            with np.errstate(divide="ignore", invalid="ignore"):
+                ratio_today = ag_close[-1] / cu_close[-1]
+                ratio_past = ag_close[-(lookback + 1)] / cu_close[-(lookback + 1)]
+            if np.isfinite(ratio_today) and np.isfinite(ratio_past) and ratio_past > 0:
+                value = (ratio_today - ratio_past) / ratio_past
+        else:
+            logger.warning(
+                "Insufficient futures data for silver-copper ratio (ag: %d, cu: %d, need: %d)",
+                len(ag_df), len(cu_df), lookback + 1,
+            )
+
+        results = {}
+        for symbol in universe:
+            metal = _get_stock_metal(symbol, config, store)
+            results[symbol] = value if metal == "ag" else np.nan
 
         return pd.Series(results)
