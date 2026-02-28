@@ -27,6 +27,10 @@ import {
   getOpsxVerifyCommandTemplate,
   getOpsxOnboardCommandTemplate,
   getOpsxProposeCommandTemplate,
+  getGenTestsSkillTemplate,
+  getRunTestsSkillTemplate,
+  getOpsxGenTestsCommandTemplate,
+  getOpsxRunTestsCommandTemplate,
   type SkillTemplate,
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
@@ -66,6 +70,8 @@ export function getSkillTemplates(workflowFilter?: readonly string[]): SkillTemp
     { template: getVerifyChangeSkillTemplate(), dirName: 'openspec-hw2-verify-change', workflowId: 'verify' },
     { template: getOnboardSkillTemplate(), dirName: 'openspec-hw2-onboard', workflowId: 'onboard' },
     { template: getOpsxProposeSkillTemplate(), dirName: 'openspec-hw2-propose', workflowId: 'propose' },
+    { template: getGenTestsSkillTemplate(), dirName: 'openspec-hw2-gen-tests', workflowId: 'gen-tests' },
+    { template: getRunTestsSkillTemplate(), dirName: 'openspec-hw2-run-tests', workflowId: 'run-tests' },
   ];
 
   if (!workflowFilter) return all;
@@ -92,6 +98,8 @@ export function getCommandTemplates(workflowFilter?: readonly string[]): Command
     { template: getOpsxVerifyCommandTemplate(), id: 'verify' },
     { template: getOpsxOnboardCommandTemplate(), id: 'onboard' },
     { template: getOpsxProposeCommandTemplate(), id: 'propose' },
+    { template: getOpsxGenTestsCommandTemplate(), id: 'gen-tests' },
+    { template: getOpsxRunTestsCommandTemplate(), id: 'run-tests' },
   ];
 
   if (!workflowFilter) return all;

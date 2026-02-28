@@ -14,6 +14,7 @@ import type { Profile } from './global-config.js';
 export const CORE_WORKFLOWS = [
   'propose', 'explore', 'new', 'continue', 'apply', 'ff',
   'sync', 'archive', 'bulk-archive', 'verify', 'onboard',
+  'gen-tests', 'run-tests',
 ] as const;
 
 /**
@@ -31,6 +32,8 @@ export const ALL_WORKFLOWS = [
   'bulk-archive',
   'verify',
   'onboard',
+  'gen-tests',
+  'run-tests',
 ] as const;
 
 export type WorkflowId = (typeof ALL_WORKFLOWS)[number];

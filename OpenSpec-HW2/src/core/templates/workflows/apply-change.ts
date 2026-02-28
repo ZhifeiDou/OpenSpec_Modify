@@ -116,7 +116,7 @@ Working on task 4/7: <task description>
 - [x] Task 2
 ...
 
-All tasks complete! Ready to archive this change.
+All tasks complete! Run \`/opsx-hw2:gen-tests\` to generate spec-test mappings, or \`/opsx-hw2:archive\` to archive and close the change.
 \`\`\`
 
 **Output On Pause (Issue Encountered)**
@@ -273,7 +273,7 @@ Working on task 4/7: <task description>
 - [x] Task 2
 ...
 
-All tasks complete! You can archive this change with \`/opsx-hw2:archive\`.
+All tasks complete! Run \`/opsx-hw2:gen-tests\` to generate spec-test mappings, or \`/opsx-hw2:archive\` to archive and close the change.
 \`\`\`
 
 **Output On Pause (Issue Encountered)**
