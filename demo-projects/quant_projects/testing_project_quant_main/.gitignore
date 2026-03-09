@@ -1,0 +1,31 @@
+# Environment variables (contains secrets)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Data
+data/*.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend build output
+frontend/build/
+
+# Reports (generated)
+reports/*.html
+reports/*.png
+
+# pytest
+.pytest_cache/
